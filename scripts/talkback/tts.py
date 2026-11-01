@@ -25,9 +25,9 @@ def synthesize(text: str, cfg: Config, api_key: str | None) -> Path | None:
     if not api_key:
         return None
     headers = {"xi-api-key": api_key, "Content-Type": "application/json", "Accept": "audio/mpeg"}
-    body = {"text": text, "model_id": cfg.eleven_model}
+    body = {"text": text, "model_id": cfg.voice.model}
     try:
-        data = post_audio(API.format(voice_id=cfg.voice_id), headers, body, TIMEOUT)
+        data = post_audio(API.format(voice_id=cfg.voice.voice), headers, body, TIMEOUT)
     except Exception as e:
         log_error(f"tts: ElevenLabs failed: {e!r}")
         return None

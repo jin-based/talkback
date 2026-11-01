@@ -13,7 +13,7 @@ def calls(monkeypatch):
                         lambda text, cfg, key: c["synthesize"].append((text, key)) or Path("/tmp/a.mp3"))
     monkeypatch.setattr(speaker, "play_file", lambda path, token: c["play_file"].append(path))
     monkeypatch.setattr(speaker, "play_say", lambda text, token: c["play_say"].append(text))
-    monkeypatch.setattr(speaker, "get_api_key", lambda: "k")
+    monkeypatch.setattr(speaker, "get_key", lambda service: "k")
     return c
 
 

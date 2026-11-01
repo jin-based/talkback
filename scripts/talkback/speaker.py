@@ -1,7 +1,7 @@
 """Reply text in, spoken summary out. Never raises."""
 from __future__ import annotations
 from talkback.clean import clean
-from talkback.config import get_api_key, load_config
+from talkback.config import get_key, load_config
 from talkback.log import log_error
 from talkback.playback import claim_and_stop, is_current, play_file, play_say
 from talkback.summarize import summarize
@@ -16,7 +16,7 @@ def speak(reply: str) -> None:
             return
         cfg = load_config()
         summary = summarize(text, cfg)
-        audio = synthesize(summary, cfg, get_api_key())
+        audio = synthesize(summary, cfg, get_key("elevenlabs"))
         if not is_current(token):
             return  # a newer reply took over while we were working
         if audio:

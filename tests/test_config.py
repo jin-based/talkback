@@ -1,24 +1,58 @@
+import json
 import subprocess
 
 from talkback import config
+from talkback.config import SummarySettings, VoiceSettings
 
 
-def test_defaults_when_no_file():
+def _write(tmp_path, data):
+    (tmp_path / "config.json").write_text(json.dumps(data))
+
+
+def test_defaults():
     c = config.load_config()
-    assert c.ollama_model == "qwen3:8b" and c.voice_id == "21m00Tcm4TlvDq8ikWAM"
-    assert c.ollama_url == "http://localhost:11434" and c.eleven_model == "eleven_flash_v2_5"
+    assert c.summary == SummarySettings("ollama", "llama3.2:3b", "http://localhost:11434")
+    assert c.voice == VoiceSettings("say", "", "eleven_flash_v2_5")
 
 
-def test_file_overrides_one_key(tmp_path):
-    (tmp_path / "config.json").write_text('{"ollama_model": "x"}')
+def test_provider_defaults_fill_in(tmp_path):
+    _write(tmp_path, {"summary": {"provider": "anthropic"}, "voice": {"provider": "kokoro"}})
     c = config.load_config()
-    assert c.ollama_model == "x" and c.ollama_url == "http://localhost:11434"
+    assert c.summary.model == "claude-haiku-5-5" and c.voice.voice == "af_heart"
 
 
-def test_corrupt_config_gives_defaults(tmp_path):
+def test_elevenlabs_default_voice(tmp_path):
+    _write(tmp_path, {"voice": {"provider": "elevenlabs"}})
+    assert config.load_config().voice.voice == "21m00Tcm4TlvDq8ikWAM"
+
+
+def test_openai_default_url(tmp_path):
+    _write(tmp_path, {"summary": {"provider": "openai"}})
+    s = config.load_config().summary
+    assert s.url == "https://api.openai.com/v1" and s.model == "gpt-4o-mini"
+
+
+def test_user_values_win(tmp_path):
+    _write(tmp_path, {"summary": {"provider": "ollama", "model": "qwen3:8b"}})
+    assert config.load_config().summary.model == "qwen3:8b"
+
+
+def test_bad_section_shapes_fall_back_per_section(tmp_path):
+    _write(tmp_path, {"summary": {"provider": "nope"}, "voice": "kokoro"})
+    c, problems = config.validate(json.loads((tmp_path / "config.json").read_text()))
+    assert c == config.load_config() and c.summary.provider == "ollama" and c.voice.provider == "say"
+    assert len(problems) == 2
+    log = (tmp_path / "log.txt").read_text()
+    assert "summary" in log and "voice" in log
+
+    _write(tmp_path, {"summary": None, "voice": {"provider": "elevenlabs", "model": 5}})
+    c = config.load_config()
+    assert c.summary.provider == "ollama" and c.voice == VoiceSettings("elevenlabs", "21m00Tcm4TlvDq8ikWAM", "5")
+
+
+def test_corrupt_file_gives_defaults(tmp_path):
     (tmp_path / "config.json").write_text("{nope")
-    assert config.load_config().ollama_model == "qwen3:8b"
-    assert "config" in (tmp_path / "log.txt").read_text()
+    assert config.load_config().summary.provider == "ollama"
 
 
 def test_enabled_by_default_and_toggles():
@@ -29,22 +63,26 @@ def test_enabled_by_default_and_toggles():
     assert config.is_enabled() is True
 
 
-def test_api_key_env_wins(monkeypatch):
-    monkeypatch.setenv("ELEVENLABS_API_KEY", "env-key")
-    assert config.get_api_key(run=lambda *a, **k: 1 / 0) == "env-key"
+def test_get_key_env_wins(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "env-key")
+    assert config.get_key("openai", run=lambda *a, **k: 1 / 0) == "env-key"
 
 
-def test_api_key_from_keychain():
+def test_get_key_keychain_args():
     seen = {}
 
     def fake(args, **k):
         seen["args"] = args
-        return subprocess.CompletedProcess(args, 0, stdout="kc-key\n", stderr="")
+        return subprocess.CompletedProcess(args, 0, stdout="kc\n", stderr="")
 
-    assert config.get_api_key(run=fake) == "kc-key"
-    assert seen["args"] == ["security", "find-generic-password", "-s", "talkback-elevenlabs", "-w"]
+    assert config.get_key("anthropic", run=fake) == "kc"
+    assert seen["args"] == ["security", "find-generic-password", "-s", "talkback-anthropic", "-a", "talkback", "-w"]
 
 
-def test_api_key_missing_returns_none():
-    fake = lambda args, **k: subprocess.CompletedProcess(args, 44, stdout="", stderr="not found")
-    assert config.get_api_key(run=fake) is None
+def test_get_key_missing_is_none():
+    fake = lambda args, **k: subprocess.CompletedProcess(args, 44, stdout="", stderr="")
+    assert config.get_key("elevenlabs", run=fake) is None
+
+
+def test_get_key_unknown_service_is_none():
+    assert config.get_key("nope", run=lambda *a, **k: 1 / 0) is None

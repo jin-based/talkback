@@ -23,12 +23,12 @@ def post_json(url: str, body: dict, timeout: float) -> dict:
 def summarize(text: str, cfg: Config) -> str:
     """`text` is already cleaned and non-empty."""
     body = {
-        "model": cfg.ollama_model, "stream": False, "think": False, "keep_alive": "30m",
+        "model": cfg.summary.model, "stream": False, "think": False, "keep_alive": "30m",
         "messages": [{"role": "system", "content": SYSTEM_PROMPT},
                      {"role": "user", "content": text[-MAX_CHARS:]}],
     }
     try:
-        out = post_json(f"{cfg.ollama_url}/api/chat", body, TIMEOUT)["message"]["content"]
+        out = post_json(f"{cfg.summary.url}/api/chat", body, TIMEOUT)["message"]["content"]
         out = first_sentence(clean(out), max_words=30)
         if out:
             return out
@@ -39,6 +39,6 @@ def summarize(text: str, cfg: Config) -> str:
 
 def warm(cfg: Config) -> None:
     try:
-        post_json(f"{cfg.ollama_url}/api/generate", {"model": cfg.ollama_model, "keep_alive": "30m"}, 60)
+        post_json(f"{cfg.summary.url}/api/generate", {"model": cfg.summary.model, "keep_alive": "30m"}, 60)
     except Exception as e:
         log_error(f"warm: {e!r}")

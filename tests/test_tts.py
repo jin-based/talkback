@@ -9,7 +9,9 @@ def test_no_key_returns_none(monkeypatch, cfg):
     assert tts.synthesize("hi", cfg, None) is None
 
 
-def test_request_shape_and_file(monkeypatch, cfg, tmp_path):
+def test_request_shape_and_file(monkeypatch, tmp_path):
+    from talkback.config import Config, SummarySettings, VoiceSettings
+    cfg = Config(SummarySettings("none", "", ""), VoiceSettings("elevenlabs", "21m00Tcm4TlvDq8ikWAM", "eleven_flash_v2_5"))
     seen = {}
 
     def fake(url, headers, body, timeout):

@@ -16,7 +16,7 @@ def test_uses_model_reply(monkeypatch, cfg):
     assert summarize.summarize("long text", cfg) == "Fixed the login bug."
     assert seen["url"] == "http://localhost:11434/api/chat" and seen["timeout"] == 5
     body = seen["body"]
-    assert body["model"] == "qwen3:8b"
+    assert body["model"] == "llama3.2:3b"
     assert body["think"] is False and body["stream"] is False and body["keep_alive"] == "30m"
     assert body["messages"][0] == {"role": "system", "content": summarize.SYSTEM_PROMPT}
     assert summarize.SYSTEM_PROMPT == ("Summarize what the assistant just did in one short spoken sentence, "
@@ -56,6 +56,6 @@ def test_warm_posts_keep_alive_and_swallows_errors(monkeypatch, cfg):
                         lambda url, body, timeout: seen.update(url=url, body=body, timeout=timeout) or {})
     summarize.warm(cfg)
     assert seen == {"url": "http://localhost:11434/api/generate",
-                    "body": {"model": "qwen3:8b", "keep_alive": "30m"}, "timeout": 60}
+                    "body": {"model": "llama3.2:3b", "keep_alive": "30m"}, "timeout": 60}
     monkeypatch.setattr(summarize, "post_json", _boom)
     summarize.warm(cfg)  # no exception
