@@ -8,7 +8,7 @@ from talkback import playback, speaker
 @pytest.fixture
 def calls(monkeypatch):
     c = {"summarize": [], "synthesize": [], "play_file": [], "play_say": []}
-    monkeypatch.setattr(speaker, "summarize", lambda text, cfg: c["summarize"].append(text) or "Summary.")
+    monkeypatch.setattr(speaker.summarizers, "run", lambda text, s: c["summarize"].append(text) or "Summary.")
     monkeypatch.setattr(speaker, "synthesize",
                         lambda text, cfg, key: c["synthesize"].append((text, key)) or Path("/tmp/a.mp3"))
     monkeypatch.setattr(speaker, "play_file", lambda path, token: c["play_file"].append(path))
@@ -40,7 +40,7 @@ def test_stale_speaker_does_not_play(calls, monkeypatch):
         playback.claim()
         return "Old summary."
 
-    monkeypatch.setattr(speaker, "summarize", newer_speaker_claims)
+    monkeypatch.setattr(speaker.summarizers, "run", newer_speaker_claims)
     speaker.speak("Done.")
     assert calls["play_file"] == [] and calls["play_say"] == []
 
@@ -57,6 +57,6 @@ def test_unexpected_error_is_logged(calls, monkeypatch, tmp_path):
     def boom(text, cfg):
         raise RuntimeError("kaboom")
 
-    monkeypatch.setattr(speaker, "summarize", boom)
+    monkeypatch.setattr(speaker.summarizers, "run", boom)
     speaker.speak("Done.")
     assert "RuntimeError" in (tmp_path / "log.txt").read_text()

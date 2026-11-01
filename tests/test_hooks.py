@@ -46,14 +46,14 @@ def test_prompt_submit_stops_playback(monkeypatch, capsys):
 
 def test_session_start_warms_model(monkeypatch):
     warmed = []
-    monkeypatch.setattr(hook_session_start.summarize, "warm", warmed.append)
+    monkeypatch.setattr(hook_session_start.ollama, "warm", warmed.append)
     assert hook_session_start.main("{}") == 0
     assert len(warmed) == 1
 
 
 def test_session_start_skips_warm_when_off(monkeypatch):
     warmed = []
-    monkeypatch.setattr(hook_session_start.summarize, "warm", warmed.append)
+    monkeypatch.setattr(hook_session_start.ollama, "warm", warmed.append)
     config.set_enabled(False)
     assert hook_session_start.main("{}") == 0
     assert warmed == []
