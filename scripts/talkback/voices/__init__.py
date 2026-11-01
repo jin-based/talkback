@@ -5,9 +5,9 @@ from pathlib import Path
 
 from talkback.config import VoiceSettings, get_key, home
 from talkback.log import log_error
-from talkback.voices import elevenlabs, say
+from talkback.voices import elevenlabs, kokoro, say
 
-PROVIDERS = {"say": say, "elevenlabs": elevenlabs}
+PROVIDERS = {"say": say, "kokoro": kokoro, "elevenlabs": elevenlabs}
 KEYED = {"elevenlabs"}
 SYSTEM_SAY = VoiceSettings("say", "", "")
 
