@@ -1,7 +1,7 @@
 # claude-voice: talk-back plugin for Claude Code (design)
 
 Date: 2026-11-01
-Status: draft, waiting for review
+Status: approved 2026-11-01; revised same day after checking Claude Code docs (plugin name, hook input, async hooks)
 
 ## Goal
 
@@ -23,7 +23,8 @@ The Claude desktop app comes later, as a separate project (see "Out of scope").
 | Summary fallback | First sentence of the reply, with code and paths removed | Works with no model |
 | Voice | ElevenLabs | Best quality |
 | Voice fallback | macOS `say` | Always available, works offline |
-| Controls | `/speak on`, `/speak off`; a new summary cuts off the old one; talking stops when the user sends the next message | Smallest useful set |
+| Plugin name | `talkback` (folder/repo stay `claude-voice`) | Claude Code rejects plugin names starting with `claude-` |
+| Controls | `/talkback:on`, `/talkback:off`; a new summary cuts off the old one; talking stops when the user sends the next message | Smallest useful set |
 | Language | Python 3 standard library only | Ships with macOS, so nothing to install |
 | ElevenLabs key | Stored in the macOS Keychain | Not in a plain file |
 
@@ -35,7 +36,7 @@ You hold Space ──► /voice (built in) ──► prompt ──► Claude wor
                                           Claude finishes (Stop hook)
                                                         │
                   ┌─────────────────────────────────────▼───────────────┐
-                  │ speaker (background process, detached from Claude)   │
+                  │ speaker (async Stop hook; Claude doesn't wait on it)  │
                   │ 1. stop anything still playing                       │
                   │ 2. summarize the reply  ── Ollama                     │
                   │       fallback: first sentence, code removed         │
@@ -48,18 +49,17 @@ You hold Space ──► /voice (built in) ──► prompt ──► Claude wor
 ### Plugin layout
 
 ```
-claude-voice/
-  .claude-plugin/plugin.json      plugin manifest
+claude-voice/                     repo root = plugin root
+  .claude-plugin/plugin.json      plugin manifest (name: talkback)
   hooks/hooks.json                registers the three hooks below
-  commands/speak.md               the /speak on|off command
+  commands/on.md, commands/off.md /talkback:on and /talkback:off
   scripts/
-    hook_session_start.py         warm the Ollama model (non-blocking)
-    hook_stop.py                  read the reply, launch the speaker, exit
+    hook_session_start.py         warm the Ollama model
+    hook_stop.py                  read the reply from hook input, run the speaker
     hook_prompt_submit.py         stop any playback
-    speak_cmd.py                  flip the on/off setting
-    speaker.py                    summarize → audio → play
-    voicelib/                     small, separately testable units
-      transcript.py               get the last assistant text from a transcript
+    set_enabled.py                flip the on/off setting
+    talkback/                     small, separately testable units
+      speaker.py                  summarize → audio → play
       clean.py                    remove code blocks, paths, markdown
       summarize.py                Ollama call + first-sentence fallback
       tts.py                      ElevenLabs call + `say` fallback
@@ -69,26 +69,26 @@ claude-voice/
   tests/
 ```
 
-Note: Claude Code may show the plugin command as `/claude-voice:speak` instead of `/speak`. Confirm during the build.
+Plugin commands are always namespaced, so they appear as `/talkback:on` and `/talkback:off`.
 
 ### Units
 
-- **transcript:** given the hook's `transcript_path`, return the text of the last assistant message. Return nothing if that message has no text (for example, only a tool call).
+- **Reply text:** taken from the Stop hook input field `last_assistant_message`. Claude Code's docs recommend this over reading the transcript, which may not yet contain the final message at Stop time.
 - **clean:** remove fenced code, inline code, file paths, URLs, tables and markdown symbols.
 - **summarize:** send the cleaned reply to Ollama (`/api/chat`, `think: false`, `keep_alive` 30m) with a prompt asking for one short spoken sentence under 20 words. For long replies, send only the last ~4,000 characters, where Claude usually says what it did. On error or a timeout over ~5 s, return the first sentence of the cleaned text.
 - **tts:** call ElevenLabs text-to-speech with the configured voice, save an mp3 to a temp file. On error or a timeout over ~8 s, use `say` instead.
 - **playback:** before playing, stop the previous playback using a PID file. Play with `afplay` (or `say`).
-- **config:** read `~/.claude/claude-voice/config.json` (Ollama model, Ollama URL, ElevenLabs voice ID) and the on/off state in `~/.claude/claude-voice/state.json`. Talk-back is on by default. Get the ElevenLabs key from the Keychain (service `claude-voice-elevenlabs`). An `ELEVENLABS_API_KEY` environment variable takes priority if set.
+- **config:** read `~/.claude/talkback/config.json` (Ollama model, Ollama URL, ElevenLabs voice ID) and the on/off state in `~/.claude/talkback/state.json`. Talk-back is on by default. Get the ElevenLabs key from the Keychain (service `talkback-elevenlabs`). An `ELEVENLABS_API_KEY` environment variable takes priority if set.
 
 ### Hooks
 
 | Event | Script | Behavior |
 |---|---|---|
-| SessionStart | `hook_session_start.py` | Start a background request that loads the model into Ollama, then exit right away |
-| Stop | `hook_stop.py` | If talk-back is off, exit. Otherwise get the last reply, start `speaker.py` detached with the text, and exit right away. Always exits 0 with no output, so Claude's flow is never changed |
+| SessionStart | `hook_session_start.py` (async) | Send a request that loads the model into Ollama |
+| Stop | `hook_stop.py` (async) | If talk-back is off or `stop_hook_active` is true, exit. Otherwise run the speaker on `last_assistant_message`. Always exits 0 with no output. Marked `"async": true`, so Claude Code doesn't wait for it |
 | UserPromptSubmit | `hook_prompt_submit.py` | Stop any playback. Exit 0, no output |
 
-**To verify during planning:** whether Claude Code has a hook for "the user started voice input" (pressing Space). If it does, stop playback there too. If not, sending the next message is the interrupt point.
+Checked against the docs: Claude Code has no hook for starting `/voice` dictation, so sending the next message (UserPromptSubmit) is the interrupt point.
 
 ## Error handling
 
@@ -101,15 +101,15 @@ Rule: the plugin never breaks or slows down Claude Code. All failures stay in th
 | Empty reply or tool-call only | Say nothing |
 | No ElevenLabs key, out of credits, offline | `say` reads the summary |
 | ElevenLabs over ~8 s | Give up, use `say` |
-| Two replies finish close together | The newer one cuts off the older one |
+| Two replies finish close together | The newer one cuts off the older one. An older speaker that finishes summarizing late must not play over the newer one |
 | Talk-back off | Stop hook exits immediately |
-| Any unexpected error | Logged to `~/.claude/claude-voice/log.txt`; hook still exits 0 |
+| Any unexpected error | Logged to `~/.claude/talkback/log.txt`; hook still exits 0 |
 
 ## Testing
 
-- **Unit tests (pytest, offline):** transcript parsing (using sample transcript files), cleaning, the first-sentence fallback, config and on/off state, and the fallback chains, with Ollama, ElevenLabs and playback faked.
+- **Unit tests (pytest, offline):** reading the hook input, cleaning, the first-sentence fallback, config and on/off state, and the fallback chains, with Ollama, ElevenLabs and playback faked.
 - **Manual service checks:** one real Ollama call and one real ElevenLabs call, run by hand.
-- **End to end:** install the plugin locally, ask Claude something, confirm the summary is heard. Then `/speak off` and confirm silence. Send a message while it's talking and confirm it stops.
+- **End to end:** install the plugin locally, ask Claude something, confirm the summary is heard. Then `/talkback:off` and confirm silence. Send a message while it's talking and confirm it stops.
 
 ## Out of scope (for now)
 
