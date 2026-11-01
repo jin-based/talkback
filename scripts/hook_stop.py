@@ -1,4 +1,5 @@
 """Stop hook (async): speak a summary of Claude's last reply."""
+from __future__ import annotations
 import json
 import os
 import sys

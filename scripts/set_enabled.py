@@ -1,4 +1,5 @@
 """Turn talk-back on or off: set_enabled.py on|off"""
+from __future__ import annotations
 import os
 import sys
 

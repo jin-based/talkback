@@ -1,4 +1,5 @@
 """Reply text in, spoken summary out. Never raises."""
+from __future__ import annotations
 from talkback.clean import clean
 from talkback.config import get_api_key, load_config
 from talkback.log import log_error

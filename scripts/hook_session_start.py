@@ -1,4 +1,5 @@
 """SessionStart hook (async): load the summary model so the first reply is fast."""
+from __future__ import annotations
 import os
 import sys
 

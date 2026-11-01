@@ -1,4 +1,5 @@
 """One-sentence summary from a local Ollama model, with a no-model fallback."""
+from __future__ import annotations
 import json
 import urllib.request
 

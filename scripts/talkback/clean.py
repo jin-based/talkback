@@ -1,4 +1,5 @@
 """Turn a Claude reply into plain text that sounds OK spoken aloud."""
+from __future__ import annotations
 import re
 
 _FENCED = re.compile(r"```.*?(```|\Z)", re.S)

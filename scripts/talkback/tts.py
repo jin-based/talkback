@@ -1,4 +1,5 @@
 """ElevenLabs text-to-speech. Returns an mp3 path, or None on any failure."""
+from __future__ import annotations
 import json
 import urllib.request
 from pathlib import Path

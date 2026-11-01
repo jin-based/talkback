@@ -1,4 +1,5 @@
 """Settings, on/off state, and the ElevenLabs key."""
+from __future__ import annotations
 import json
 import os
 import subprocess

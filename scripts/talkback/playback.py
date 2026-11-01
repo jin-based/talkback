@@ -1,4 +1,5 @@
 """Play audio, and stop whatever talkback is currently playing."""
+from __future__ import annotations
 import os
 import secrets
 import signal

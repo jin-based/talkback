@@ -1,4 +1,5 @@
 """UserPromptSubmit hook: stop talking when the user sends a new message."""
+from __future__ import annotations
 import os
 import sys
 
