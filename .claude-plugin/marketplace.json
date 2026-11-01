@@ -1,0 +1,24 @@
+{
+  "name": "talkback",
+  "description": "talkback: hear a spoken summary of each Claude Code reply.",
+  "owner": {
+    "name": "jin-based",
+    "url": "https://github.com/jin-based"
+  },
+  "plugins": [
+    {
+      "name": "talkback",
+      "source": "./",
+      "description": "Speaks a short summary of each Claude reply. Choose your summary model (Ollama, OpenAI-compatible, Claude Haiku) and voice (Mac, Kokoro, ElevenLabs).",
+      "category": "productivity",
+      "tags": [
+        "voice",
+        "tts",
+        "accessibility",
+        "elevenlabs",
+        "ollama",
+        "kokoro"
+      ]
+    }
+  ]
+}

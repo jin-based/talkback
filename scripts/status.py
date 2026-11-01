@@ -38,6 +38,7 @@ def main() -> int:
         if s.model not in names:
             problems = problems + [f"summary: Ollama model {s.model} is not installed "
                                    f"(run: ollama pull {s.model}); summaries will use the first sentence"]
+    print(f"Scripts: {os.path.dirname(os.path.abspath(__file__))}")
     print("Settings")
     print(f"  summary: provider={s.provider} model={s.model or '-'} url={s.url or '-'}")
     print(f"  voice:   provider={v.provider} voice={v.voice or '(system default)'}"

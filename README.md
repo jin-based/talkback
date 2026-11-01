@@ -6,13 +6,28 @@ Pair it with Claude Code's built-in `/voice` (hold Space to talk) and you can wo
 
 > **macOS only** for now: it uses the Mac's audio player, voices and Keychain.
 
-## Quick start
+## Install
 
-```sh
-claude --plugin-dir /path/to/talkback
+In Claude Code (2.1.275 or later):
+
+```
+/plugin install talkback --marketplace jin-based/talkback
 ```
 
-That's it. With no setup at all, talkback reads the first sentence of each reply in the built-in Mac voice. Run **`/talkback:setup`** inside Claude Code to choose a better summary model or voice. Claude walks you through it and plays a test sentence.
+Or in two steps (any recent version):
+
+```
+/plugin marketplace add jin-based/talkback
+/plugin install talkback@talkback
+```
+
+From your shell: `claude plugin install talkback --marketplace jin-based/talkback` (2.1.292 or later).
+
+To try a local copy without installing: `claude --plugin-dir /path/to/talkback`.
+
+## Quick start
+
+Once installed, there's nothing else to do. With no setup at all, talkback reads the first sentence of each reply in the built-in Mac voice. Run **`/talkback:setup`** inside Claude Code to choose a better summary model or voice. Claude walks you through it and plays a test sentence.
 
 ## How it works
 
@@ -54,6 +69,8 @@ If any step fails (model not running, no key, no internet), talkback falls back 
 | `/talkback:key <service>` | Save an API key (`elevenlabs`, `anthropic` or `openai`) through a private pop-up |
 | `/talkback:key <service> remove` | Delete a saved key |
 | `/talkback:on` / `/talkback:off` | Turn spoken summaries on or off |
+
+You can also just ask in plain words, for example "switch the voice to Kokoro", "use Haiku for the summaries" or "turn talkback off". The plugin's `talkback-settings` skill handles it.
 
 ## API keys and privacy
 

@@ -1,6 +1,12 @@
 {
   "name": "talkback",
   "version": "0.1.0",
-  "description": "Speaks a short summary of each Claude reply (local model + ElevenLabs).",
-  "license": "MIT"
+  "description": "Speaks a short summary of each Claude reply. Choose your summary model and voice.",
+  "license": "MIT",
+  "author": {
+    "name": "jin-based",
+    "url": "https://github.com/jin-based"
+  },
+  "homepage": "https://github.com/jin-based/talkback",
+  "repository": "https://github.com/jin-based/talkback"
 }

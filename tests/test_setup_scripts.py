@@ -103,3 +103,9 @@ def test_status_accepts_latest_tag(monkeypatch, tmp_path, capsys):
     monkeypatch.setattr(status, "_ollama_models", lambda url: ["mistral:latest"])
     status.main()
     assert "not installed" not in capsys.readouterr().out
+
+
+def test_status_prints_scripts_folder(capsys):
+    status.main()
+    first = capsys.readouterr().out.splitlines()[0]
+    assert first == f"Scripts: {Path(status.__file__).resolve().parent}"
