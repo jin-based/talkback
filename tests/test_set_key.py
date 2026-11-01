@@ -14,7 +14,8 @@ def runs(monkeypatch):
     def fake(args, **k):
         rec["calls"].append({"args": args, "input": k.get("input")})
         if args[0] == "osascript":
-            return subprocess.CompletedProcess(args, rec["dialog_rc"], stdout=rec["dialog_out"], stderr="")
+            err = "execution error: User canceled. (-128)" if rec["dialog_rc"] else ""
+            return subprocess.CompletedProcess(args, rec["dialog_rc"], stdout=rec["dialog_out"], stderr=err)
         if args[:2] == ["security", "-i"]:
             return subprocess.CompletedProcess(args, rec["security_rc"], stdout="", stderr="")
         if args[:2] == ["security", "delete-generic-password"]:
@@ -86,3 +87,20 @@ def test_save_failure_message(runs, capsys):
     runs["security_rc"] = 1
     assert set_key.main(["elevenlabs"]) == 1
     assert capsys.readouterr().out.strip() == "Could not save the key in the Keychain."
+
+
+def test_dialog_failure_is_not_called_cancel(runs, capsys, monkeypatch):
+    def fake(args, **k):
+        return subprocess.CompletedProcess(args, 1, stdout="", stderr="execution error: No user interaction allowed. (-1713)")
+    monkeypatch.setattr(set_key, "_run", fake)
+    assert set_key.main(["elevenlabs"]) == 1
+    out = capsys.readouterr().out
+    assert "Could not open the key pop-up" in out and "-1713" in out and "ELEVENLABS_API_KEY" in out
+
+
+def test_user_cancel_is_cancel(runs, capsys, monkeypatch):
+    def fake(args, **k):
+        return subprocess.CompletedProcess(args, 1, stdout="", stderr="execution error: User canceled. (-128)")
+    monkeypatch.setattr(set_key, "_run", fake)
+    assert set_key.main(["elevenlabs"]) == 0
+    assert capsys.readouterr().out.strip() == "Cancelled, nothing saved."

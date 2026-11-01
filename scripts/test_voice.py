@@ -35,6 +35,7 @@ def _speak(cfg: config.Config) -> tuple[str, str]:
 def main(argv: list[str]) -> int:
     if "--long" in argv:
         voices.kokoro.TIMEOUT = 600
+        voices.kokoro.WAIT_FOR_DOWNLOAD = True
     s_label, v_label = _speak(config.load_config())
     print(f"Summary by: {s_label}")
     print(f"Voice: {v_label}")

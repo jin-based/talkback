@@ -32,8 +32,8 @@ If any step fails (model not running, no key, no internet), talkback falls back 
 | Option | Cost | Setup | Notes |
 |---|---|---|---|
 | `ollama` (default) | Free | [Ollama](https://ollama.com) + `ollama pull llama3.2:3b` | Private, runs on your Mac. Any Ollama model works |
-| `openai` | Free (local) or paid | Set a URL and model; key only for paid services | Any OpenAI-compatible server: LM Studio, llama.cpp, OpenRouter, OpenAI |
-| `anthropic` | Paid (a fraction of a cent per reply) | Anthropic API key | Claude Haiku (`claude-haiku-5-5`) |
+| `openai` | Free (local) or paid | Set a URL and model; key only for paid services | Any OpenAI-compatible server: LM Studio, llama.cpp, OpenRouter, OpenAI. Uses the classic `max_tokens` field, so pick a chat model such as `gpt-4o-mini` (some newer reasoning models reject it) |
+| `anthropic` | Paid (a fraction of a cent per reply) | Anthropic API key | Claude Haiku (`claude-haiku-5-5`) by default; any Claude model works |
 | `none` | Free | Nothing | Reads the reply's first sentence |
 
 ### Voice
@@ -41,7 +41,7 @@ If any step fails (model not running, no key, no internet), talkback falls back 
 | Option | Cost | Setup | Notes |
 |---|---|---|---|
 | `say` (default) | Free | Nothing | Built-in Mac voice. Downloaded "Premium" voices in System Settings sound better |
-| `kokoro` | Free | [`uv`](https://docs.astral.sh/uv/) (`brew install uv`); ~140 MB model downloads on first use | **Recommended upgrade.** Natural-sounding, runs on your Mac, about 1 s per sentence |
+| `kokoro` | Free | [`uv`](https://docs.astral.sh/uv/) (`brew install uv`); ~140 MB model downloads on first use | **Recommended upgrade.** Natural-sounding, runs on your Mac, about 1 s per sentence. `/talkback:setup` does the first download for you; if you switch to it by hand, the Mac voice fills in while it downloads in the background |
 | `elevenlabs` | Paid (free credits to start) | ElevenLabs API key | The most natural voice; pick any voice from your ElevenLabs library |
 
 **Suggested path:** start with the defaults, then switch the voice to Kokoro (free). Add a paid option only if you want it.
@@ -58,8 +58,9 @@ If any step fails (model not running, no key, no internet), talkback falls back 
 ## API keys and privacy
 
 - `/talkback:key` opens a macOS pop-up with a hidden field and stores the key in your **macOS Keychain**. The key never goes into the chat, into Claude's context, or into a file.
-- You can use environment variables instead: `ELEVENLABS_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`. They take priority over the Keychain.
-- With `ollama`, `none`, `say` and `kokoro`, nothing leaves your Mac. Paid options send only the short reply text (summary) or the one summary sentence (voice) to that service.
+- You can use environment variables instead: `ELEVENLABS_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`. They take priority over the Keychain. `OPENAI_API_KEY` is only used when `summary.url` is OpenAI itself; for OpenRouter or other servers, save that service's key with `/talkback:key openai`.
+- With `ollama`, `none`, `say` and `kokoro`, your text never leaves your Mac. (Kokoro downloads its packages and model from PyPI and GitHub the first time.)
+- Online summary options (`anthropic`, or `openai` pointed at a hosted service) receive the cleaned text of Claude's reply, up to its last 4,000 characters. `elevenlabs` receives only the one summary sentence.
 - Note: if your Claude Code itself runs on `ANTHROPIC_API_KEY`, choosing `anthropic` bills summaries to that same key.
 
 ## Settings file

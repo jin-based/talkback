@@ -121,10 +121,10 @@ def set_enabled(on: bool) -> None:
     (home() / "state.json").write_text(json.dumps({"enabled": bool(on)}))
 
 
-def get_key(service: str, run=subprocess.run) -> str | None:
+def get_key(service: str, run=subprocess.run, env: bool = True) -> str | None:
     if service not in KEY_SERVICES:
         return None
-    key = os.environ.get(ENV_VARS[service], "").strip()
+    key = os.environ.get(ENV_VARS[service], "").strip() if env else ""
     if key:
         return key
     try:

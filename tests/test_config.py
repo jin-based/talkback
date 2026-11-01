@@ -86,3 +86,9 @@ def test_get_key_missing_is_none():
 
 def test_get_key_unknown_service_is_none():
     assert config.get_key("nope", run=lambda *a, **k: 1 / 0) is None
+
+
+def test_get_key_env_false_skips_env(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "env-key")
+    fake = lambda args, **k: subprocess.CompletedProcess(args, 0, stdout="kc\n", stderr="")
+    assert config.get_key("openai", run=fake, env=False) == "kc"

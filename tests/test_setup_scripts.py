@@ -87,8 +87,8 @@ def test_test_voice_reports_fallback(monkeypatch, capsys, tmp_path):
 def test_test_voice_long_raises_kokoro_timeout(monkeypatch):
     monkeypatch.setattr(tv, "_speak", lambda cfg: ("x", "say"))
     tv.main(["--long"])
-    assert voices.kokoro.TIMEOUT == 600
-    voices.kokoro.TIMEOUT = 20
+    assert voices.kokoro.TIMEOUT == 600 and voices.kokoro.WAIT_FOR_DOWNLOAD is True
+    voices.kokoro.TIMEOUT, voices.kokoro.WAIT_FOR_DOWNLOAD = 20, False
 
 
 def test_status_flags_missing_ollama_model(monkeypatch, capsys):

@@ -27,14 +27,25 @@ def ensure_models(folder: Path) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--voice", default="af_heart")
-    ap.add_argument("--out", required=True)
+    ap.add_argument("--out")
     ap.add_argument("--home", required=True)
+    ap.add_argument("--download-only", action="store_true")
     a = ap.parse_args()
+    folder = Path(a.home) / "kokoro"
+    if a.download_only:
+        try:
+            ensure_models(folder)
+            import kokoro_onnx  # noqa: F401  (packages are installed by uv before this runs)
+        finally:
+            (folder / ".downloading").unlink(missing_ok=True)
+        return 0
+    if not a.out:
+        print("--out is required", file=sys.stderr)
+        return 2
     text = sys.stdin.read().strip()
     if not text:
         print("no text on stdin", file=sys.stderr)
         return 2
-    folder = Path(a.home) / "kokoro"
     try:
         ensure_models(folder)
         import soundfile

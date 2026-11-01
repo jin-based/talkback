@@ -16,8 +16,10 @@ def summarize(text: str, s: SummarySettings, key: str | None) -> str:
     body = {
         "model": s.model, "max_tokens": 300, "system": SYSTEM_PROMPT,
         "messages": [{"role": "user", "content": tail(text)}],
-        "thinking": {"type": "disabled"}, "output_config": {"effort": "low"},
+        "output_config": {"effort": "low"},
     }
+    if s.model.startswith("claude-haiku"):
+        body["thinking"] = {"type": "disabled"}  # other current Claude models reject disabling thinking
     data = _http.post_json(URL, headers, body, TIMEOUT)
     if data.get("stop_reason") == "refusal":
         raise RuntimeError("refused")

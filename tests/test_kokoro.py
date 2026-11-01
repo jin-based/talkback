@@ -55,7 +55,14 @@ def say_ok(monkeypatch):
     monkeypatch.setattr(say, "_run", fake)
 
 
-def test_kokoro_command_line(procs, tmp_path):
+@pytest.fixture
+def models(tmp_path):
+    (tmp_path / "kokoro").mkdir(exist_ok=True)
+    for name in kokoro.MODEL_FILES:
+        (tmp_path / "kokoro" / name).write_bytes(b"x")
+
+
+def test_kokoro_command_line(procs, models, tmp_path):
     made, _ = procs
     p = kokoro.synthesize("Hello there.", KOKORO, None, tmp_path / "s")
     assert p == tmp_path / "s.wav" and p.exists()
@@ -68,7 +75,7 @@ def test_kokoro_command_line(procs, tmp_path):
     assert made[0].kwargs.get("start_new_session") is True
 
 
-def test_kokoro_without_uv_falls_back(monkeypatch, say_ok, tmp_path):
+def test_kokoro_without_uv_falls_back(monkeypatch, say_ok, models, tmp_path):
     def no_uv(args, **k):
         raise FileNotFoundError("uv")
 
@@ -77,7 +84,7 @@ def test_kokoro_without_uv_falls_back(monkeypatch, say_ok, tmp_path):
     assert "kokoro" in (tmp_path / "log.txt").read_text()
 
 
-def test_kokoro_timeout_kills_process_and_falls_back(procs, monkeypatch, say_ok, tmp_path):
+def test_kokoro_timeout_kills_process_and_falls_back(procs, monkeypatch, say_ok, models, tmp_path):
     made, opts = procs
     opts["hang"] = True
     killed = []
@@ -86,7 +93,7 @@ def test_kokoro_timeout_kills_process_and_falls_back(procs, monkeypatch, say_ok,
     assert killed == [777]
 
 
-def test_kokoro_nonzero_exit_raises(procs, tmp_path):
+def test_kokoro_nonzero_exit_raises(procs, models, tmp_path):
     _, opts = procs
     opts.update(rc=1, writes=False)
     with pytest.raises(RuntimeError):
@@ -99,3 +106,25 @@ def test_models_present(tmp_path):
     for name in kokoro.MODEL_FILES:
         (tmp_path / "kokoro" / name).write_bytes(b"x")
     assert kokoro.models_present() is True
+
+
+def test_missing_model_starts_background_download_and_falls_back(procs, say_ok, tmp_path):
+    made, _ = procs
+    assert voices.render("hi", KOKORO, "t") == (tmp_path / "speech-t.aiff", "say")
+    assert len(made) == 1 and "--download-only" in made[0].args
+    assert made[0].kwargs.get("start_new_session") is True
+    assert made[0].input is None  # detached: we never wait on it
+
+
+def test_background_download_not_started_twice(procs, say_ok, tmp_path):
+    made, _ = procs
+    voices.render("hi", KOKORO, "t1")
+    voices.render("hi", KOKORO, "t2")
+    assert len([p for p in made if "--download-only" in p.args]) == 1
+
+
+def test_setup_mode_waits_for_download(procs, monkeypatch, tmp_path):
+    made, _ = procs
+    monkeypatch.setattr(kokoro, "WAIT_FOR_DOWNLOAD", True)
+    assert kokoro.synthesize("hi", KOKORO, None, tmp_path / "s").exists()
+    assert "--download-only" not in made[0].args

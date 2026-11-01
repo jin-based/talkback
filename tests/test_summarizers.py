@@ -28,7 +28,7 @@ def http(monkeypatch):
 @pytest.fixture
 def keys(monkeypatch):
     k = {"openai": "k", "anthropic": "k"}
-    monkeypatch.setattr(summarizers, "get_key", lambda service: k.get(service))
+    monkeypatch.setattr(summarizers, "get_key", lambda service, env=True: k.get(service))
     return k
 
 
@@ -131,3 +131,20 @@ def test_warm(http):
     assert c["body"] == {"model": "llama3.2:3b", "keep_alive": "30m"}
     http["reply"] = OSError("down")
     summarizers.ollama.warm(OLLAMA)  # no exception
+
+
+def test_env_openai_key_not_sent_to_other_hosts(http, monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "real-openai-key")
+    monkeypatch.setattr(summarizers, "get_key", lambda service, env=True: "real-openai-key" if env else "router-key")
+    http["reply"] = {"choices": [{"message": {"content": "Done."}}]}
+    summarizers.run("text", SummarySettings("openai", "m", "https://openrouter.ai/api/v1"))
+    assert http["calls"][0]["headers"]["Authorization"] == "Bearer router-key"
+    summarizers.run("text", OPENAI)
+    assert http["calls"][1]["headers"]["Authorization"] == "Bearer real-openai-key"
+
+
+def test_non_haiku_claude_model_omits_thinking(http, keys):
+    http["reply"] = {"content": [{"type": "text", "text": "ok."}]}
+    summarizers.run("text", SummarySettings("anthropic", "claude-sonnet-5-5", ""))
+    b = http["calls"][0]["body"]
+    assert "thinking" not in b and b["output_config"] == {"effort": "low"}
