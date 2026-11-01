@@ -1,0 +1,14 @@
+{
+  "description": "talkback: speak a summary of each Claude reply",
+  "hooks": {
+    "SessionStart": [
+      {"hooks": [{"type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/hook_session_start.py\"", "async": true}]}
+    ],
+    "Stop": [
+      {"hooks": [{"type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/hook_stop.py\"", "async": true}]}
+    ],
+    "UserPromptSubmit": [
+      {"hooks": [{"type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/hook_prompt_submit.py\"", "timeout": 5}]}
+    ]
+  }
+}
