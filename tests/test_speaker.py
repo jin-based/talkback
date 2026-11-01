@@ -6,43 +6,47 @@ from talkback import playback, speaker
 
 
 @pytest.fixture
-def calls(monkeypatch):
-    c = {"summarize": [], "synthesize": [], "play_file": [], "play_say": []}
+def calls(monkeypatch, tmp_path):
+    c = {"summarize": [], "render": [], "play": []}
+
+    def render(text, s, token):
+        p = tmp_path / f"speech-{token}.aiff"
+        p.write_bytes(b"x")
+        c["render"].append((text, p))
+        return p, "say"
+
     monkeypatch.setattr(speaker.summarizers, "run", lambda text, s: c["summarize"].append(text) or "Summary.")
-    monkeypatch.setattr(speaker, "synthesize",
-                        lambda text, cfg, key: c["synthesize"].append((text, key)) or Path("/tmp/a.mp3"))
-    monkeypatch.setattr(speaker, "play_file", lambda path, token: c["play_file"].append(path))
-    monkeypatch.setattr(speaker, "play_say", lambda text, token: c["play_say"].append(text))
-    monkeypatch.setattr(speaker, "get_key", lambda service: "k")
+    monkeypatch.setattr(speaker.voices, "render", render)
+    monkeypatch.setattr(speaker, "play_file", lambda path, token: c["play"].append((path, path.exists())))
     return c
 
 
-def test_happy_path_plays_elevenlabs_audio(calls):
+def test_speaker_plays_rendered_file_and_deletes_it(calls):
     speaker.speak("I fixed the bug in `x`. Tests pass.")
     assert calls["summarize"] == ["I fixed the bug in. Tests pass."]
-    assert calls["synthesize"] == [("Summary.", "k")]
-    assert calls["play_file"] == [Path("/tmp/a.mp3")] and calls["play_say"] == []
+    (text, path), = calls["render"]
+    assert text == "Summary." and calls["play"] == [(path, True)]
+    assert not path.exists()
 
 
-def test_falls_back_to_say_when_tts_fails(calls, monkeypatch):
-    monkeypatch.setattr(speaker, "synthesize", lambda *a: None)
-    speaker.speak("Done.")
-    assert calls["play_say"] == ["Summary."] and calls["play_file"] == []
-
-
-def test_code_only_reply_is_silent(calls):
+def test_speaker_code_only_is_silent(calls):
     speaker.speak("```py\nx = 1\n```")
-    assert calls["summarize"] == [] and calls["play_file"] == [] and calls["play_say"] == []
+    assert calls["summarize"] == [] and calls["render"] == [] and calls["play"] == []
 
 
-def test_stale_speaker_does_not_play(calls, monkeypatch):
-    def newer_speaker_claims(text, cfg):
+def test_speaker_stale_after_render_does_not_play_and_deletes(calls, monkeypatch):
+    real_render = speaker.voices.render
+
+    def render_then_newer_claims(text, s, token):
+        out = real_render(text, s, token)
         playback.claim()
-        return "Old summary."
+        return out
 
-    monkeypatch.setattr(speaker.summarizers, "run", newer_speaker_claims)
+    monkeypatch.setattr(speaker.voices, "render", render_then_newer_claims)
     speaker.speak("Done.")
-    assert calls["play_file"] == [] and calls["play_say"] == []
+    assert calls["play"] == []
+    (_, path), = calls["render"]
+    assert not path.exists()
 
 
 def test_stops_previous_playback_first(calls, monkeypatch):
@@ -54,7 +58,7 @@ def test_stops_previous_playback_first(calls, monkeypatch):
 
 
 def test_unexpected_error_is_logged(calls, monkeypatch, tmp_path):
-    def boom(text, cfg):
+    def boom(text, s):
         raise RuntimeError("kaboom")
 
     monkeypatch.setattr(speaker.summarizers, "run", boom)
