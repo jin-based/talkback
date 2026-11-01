@@ -84,3 +84,16 @@ def test_set_enabled_off_stops_talking(monkeypatch):
     monkeypatch.setattr(set_enabled.playback, "stop_current", lambda: stopped.append(1))
     set_enabled.main(["off"])
     assert stopped == [1]
+
+
+def test_stop_hook_logs_missing_message(tmp_path):
+    hook_stop.main('{"other": 1}')
+    assert "no last_assistant_message" in (tmp_path / "log.txt").read_text()
+
+
+def test_session_start_warms_only_for_ollama(monkeypatch, tmp_path):
+    warmed = []
+    monkeypatch.setattr(hook_session_start.ollama, "warm", warmed.append)
+    (tmp_path / "config.json").write_text('{"summary": {"provider": "anthropic"}}')
+    hook_session_start.main("{}")
+    assert warmed == []

@@ -12,7 +12,7 @@ from talkback.config import home
 from talkback.log import log_error
 
 _popen = subprocess.Popen
-PLAYERS = ("afplay", "say")
+PLAYERS = ("afplay",)
 
 
 def _comm(pid: int) -> str:
@@ -78,11 +78,18 @@ def _run(args: list[str], token: str) -> None:
         proc = _popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         (home() / "playback.pid").write_text(str(proc.pid))
     proc.wait()
+    _clear_pid(proc.pid)
+
+
+def _clear_pid(pid: int) -> None:
+    pid_file = home() / "playback.pid"
+    with locked():
+        try:
+            if pid_file.read_text().strip() == str(pid):
+                pid_file.unlink()
+        except OSError:
+            pass
 
 
 def play_file(path: Path, token: str) -> None:
     _run(["afplay", str(path)], token)
-
-
-def play_say(text: str, token: str) -> None:
-    _run(["say", text], token)

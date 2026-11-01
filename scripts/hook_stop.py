@@ -20,6 +20,8 @@ def main(stdin_text: str) -> int:
         reply = data.get("last_assistant_message")
         if isinstance(reply, str) and reply.strip():
             speaker.speak(reply)
+        else:
+            log_error("hook_stop: no last_assistant_message in hook input")
     except Exception as e:
         log_error(f"hook_stop: {e!r}")
     return 0

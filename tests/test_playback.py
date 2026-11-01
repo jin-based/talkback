@@ -51,12 +51,6 @@ def test_stop_current_garbage_pid_file_is_fine(tmp_path):
     playback.stop_current()
 
 
-def test_play_say_uses_arg_list(monkeypatch):
-    _fake_popen(monkeypatch)
-    playback.play_say('He said "hi"; rm -rf', playback.claim())
-    assert FakeProc.started == [["say", 'He said "hi"; rm -rf']]
-    assert FakeProc.pid_file_during_play == "4242"
-
 
 def test_play_file_uses_afplay(monkeypatch, tmp_path):
     _fake_popen(monkeypatch)
@@ -85,7 +79,7 @@ def test_player_starts_while_holding_lock(monkeypatch):
 
     FakeProc.started = []
     monkeypatch.setattr(playback, "_popen", P)
-    playback.play_say("hi", playback.claim())
+    playback.play_file(Path("/tmp/x.aiff"), playback.claim())
     assert held == [True]
     assert _lock_is_held() is False  # released before waiting/after
 
@@ -94,7 +88,6 @@ def test_stale_token_never_starts_player(monkeypatch):
     _fake_popen(monkeypatch)
     old = playback.claim()
     playback.claim()
-    playback.play_say("hi", old)
     playback.play_file(Path("/tmp/x.mp3"), old)
     assert FakeProc.started == []
 
@@ -104,3 +97,25 @@ def test_claim_and_stop_holds_lock(monkeypatch):
     monkeypatch.setattr(playback, "stop_current", lambda: held.append(_lock_is_held()))
     token = playback.claim_and_stop()
     assert held == [True] and playback.is_current(token)
+
+
+def test_pid_file_removed_after_playback(monkeypatch, tmp_path):
+    _fake_popen(monkeypatch)
+    playback.play_file(tmp_path / "a.aiff", playback.claim())
+    assert not (tmp_path / "playback.pid").exists()
+
+
+def test_pid_file_kept_if_overwritten(monkeypatch, tmp_path):
+    class P(FakeProc):
+        def wait(self):
+            (playback.home() / "playback.pid").write_text("999")  # a newer player took over
+            return 0
+
+    FakeProc.started = []
+    monkeypatch.setattr(playback, "_popen", P)
+    playback.play_file(tmp_path / "a.aiff", playback.claim())
+    assert (tmp_path / "playback.pid").read_text() == "999"
+
+
+def test_play_say_is_gone():
+    assert not hasattr(playback, "play_say")
