@@ -1,0 +1,5 @@
+{
+  "name": "talkback",
+  "version": "0.1.0",
+  "description": "Speaks a short summary of each Claude reply (local model + ElevenLabs)."
+}
