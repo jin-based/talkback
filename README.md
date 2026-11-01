@@ -1,73 +1,101 @@
 # talkback
 
-A Claude Code plugin that speaks a short summary of each Claude reply out loud.
-Pair it with Claude Code's built-in `/voice` (hold Space to talk) and you can work with Claude hands-free:
-talk to ask, listen for what it did.
+**Hear what Claude did.** talkback is a Claude Code plugin that speaks a one-sentence summary of each Claude reply out loud.
+
+Pair it with Claude Code's built-in `/voice` (hold Space to talk) and you can work hands-free. Ask out loud, keep your eyes on something else, and listen for "Fixed the login bug, and all tests pass."
+
+> **macOS only** for now: it uses the Mac's audio player, voices and Keychain.
+
+## Quick start
+
+```sh
+claude --plugin-dir /path/to/talkback
+```
+
+That's it. With no setup at all, talkback reads the first sentence of each reply in the built-in Mac voice. Run **`/talkback:setup`** inside Claude Code to choose a better summary model or voice. Claude walks you through it and plays a test sentence.
 
 ## How it works
 
 When Claude finishes a reply, talkback:
 
-1. cleans the reply (drops code, file paths, tables, markdown),
-2. asks a **local model in Ollama** (default `qwen3:8b`) for a one-sentence summary
-   (if Ollama is off or slow, it uses the reply's first sentence),
-3. turns that sentence into speech with **ElevenLabs**
-   (if there's no key, no credits, or no internet, it uses the Mac voice, `say`),
-4. plays it. A newer reply cuts off an older one, and sending a message stops it talking.
+1. strips code, file paths, tables and markdown from the reply,
+2. asks your **summary model** for one short sentence about what Claude did,
+3. turns that sentence into speech with your **voice**,
+4. plays it.
 
-It runs in the background and never slows down or blocks Claude Code.
+If any step fails (model not running, no key, no internet), talkback falls back quietly. A summary falls back to the reply's first sentence; a voice falls back to the Mac voice. It runs in the background and never slows Claude Code down. A newer reply cuts off an older one, and sending a message stops it talking.
 
-## Setup
+## Choose your models
 
-Requirements: macOS, Python 3, and [Ollama](https://ollama.com) with the summary model pulled
-(`ollama pull qwen3:8b`, or set another model in the config).
+### Summary model
 
-Store your ElevenLabs API key in the Mac Keychain (you'll be prompted for it, so it never lands in your shell history):
+| Option | Cost | Setup | Notes |
+|---|---|---|---|
+| `ollama` (default) | Free | [Ollama](https://ollama.com) + `ollama pull llama3.2:3b` | Private, runs on your Mac. Any Ollama model works |
+| `openai` | Free (local) or paid | Set a URL and model; key only for paid services | Any OpenAI-compatible server: LM Studio, llama.cpp, OpenRouter, OpenAI |
+| `anthropic` | Paid (a fraction of a cent per reply) | Anthropic API key | Claude Haiku (`claude-haiku-5-5`) |
+| `none` | Free | Nothing | Reads the reply's first sentence |
 
-```sh
-security add-generic-password -s talkback-elevenlabs -a "$USER" -w
-```
+### Voice
 
-Alternatively set `ELEVENLABS_API_KEY` in your environment; it takes priority over the Keychain.
-Without a key, talkback still works using the Mac voice.
+| Option | Cost | Setup | Notes |
+|---|---|---|---|
+| `say` (default) | Free | Nothing | Built-in Mac voice. Downloaded "Premium" voices in System Settings sound better |
+| `kokoro` | Free | [`uv`](https://docs.astral.sh/uv/) (`brew install uv`); ~140 MB model downloads on first use | **Recommended upgrade.** Natural-sounding, runs on your Mac, about 1 s per sentence |
+| `elevenlabs` | Paid (free credits to start) | ElevenLabs API key | The most natural voice; pick any voice from your ElevenLabs library |
 
-Try it for one session:
-
-```sh
-claude --plugin-dir /path/to/claude-voice
-```
+**Suggested path:** start with the defaults, then switch the voice to Kokoro (free). Add a paid option only if you want it.
 
 ## Commands
 
 | Command | What it does |
 |---|---|
-| `/talkback:on` | Turn spoken summaries on (the default) |
-| `/talkback:off` | Turn them off and stop any current speech |
+| `/talkback:setup` | See what's set, choose models, test the voice |
+| `/talkback:key <service>` | Save an API key (`elevenlabs`, `anthropic` or `openai`) through a private pop-up |
+| `/talkback:key <service> remove` | Delete a saved key |
+| `/talkback:on` / `/talkback:off` | Turn spoken summaries on or off |
 
-## Config
+## API keys and privacy
 
-Optional: `~/.claude/talkback/config.json`. Any key you leave out uses the default.
+- `/talkback:key` opens a macOS pop-up with a hidden field and stores the key in your **macOS Keychain**. The key never goes into the chat, into Claude's context, or into a file.
+- You can use environment variables instead: `ELEVENLABS_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`. They take priority over the Keychain.
+- With `ollama`, `none`, `say` and `kokoro`, nothing leaves your Mac. Paid options send only the short reply text (summary) or the one summary sentence (voice) to that service.
+- Note: if your Claude Code itself runs on `ANTHROPIC_API_KEY`, choosing `anthropic` bills summaries to that same key.
+
+## Settings file
+
+`/talkback:setup` edits this for you, but you can also edit `~/.claude/talkback/config.json` by hand. Leave out any field to use its default.
 
 ```json
 {
-  "ollama_url": "http://localhost:11434",
-  "ollama_model": "qwen3:8b",
-  "voice_id": "21m00Tcm4TlvDq8ikWAM",
-  "eleven_model": "eleven_flash_v2_5"
+  "summary": { "provider": "ollama", "model": "llama3.2:3b", "url": "http://localhost:11434" },
+  "voice":   { "provider": "kokoro", "voice": "af_heart" }
 }
 ```
 
-`voice_id` is any voice from your ElevenLabs voice library.
+| Field | Default |
+|---|---|
+| `summary.model` | `ollama`: `llama3.2:3b` · `openai`: `gpt-4o-mini` · `anthropic`: `claude-haiku-5-5` |
+| `summary.url` | `ollama`: `http://localhost:11434` · `openai`: `https://api.openai.com/v1` |
+| `voice.voice` | `say`: system voice · `kokoro`: `af_heart` · `elevenlabs`: `21m00Tcm4TlvDq8ikWAM` |
+| `voice.model` | `elevenlabs`: `eleven_flash_v2_5` |
 
 ## Troubleshooting
 
-Errors are written to `~/.claude/talkback/log.txt`. Set `TALKBACK_HOME` to use a different data folder.
+- Not hearing the voice or model you chose? Run `/talkback:setup`. It shows what's working, and its test reports any fallback and why.
+- Errors are logged to `~/.claude/talkback/log.txt`.
+- Set `TALKBACK_HOME` to use a different data folder.
+- All Claude Code sessions share one voice: the latest reply from any session plays, and a message in any session stops it.
 
 ## Development
 
 ```sh
-uv run --with pytest pytest -q
+uv run --with pytest pytest -q     # tests (offline, no services needed)
 claude plugin validate .
 ```
 
-Design notes: `docs/superpowers/specs/2026-11-01-claude-voice-talkback-design.md`.
+The plugin itself uses only the Python standard library and runs on the Python that ships with macOS. Kokoro runs in its own `uv` environment. Design notes are in `docs/superpowers/specs/`.
+
+## License
+
+MIT

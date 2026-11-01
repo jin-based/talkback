@@ -89,3 +89,17 @@ def test_test_voice_long_raises_kokoro_timeout(monkeypatch):
     tv.main(["--long"])
     assert voices.kokoro.TIMEOUT == 600
     voices.kokoro.TIMEOUT = 20
+
+
+def test_status_flags_missing_ollama_model(monkeypatch, capsys):
+    monkeypatch.setattr(status, "_ollama_models", lambda url: ["qwen3:8b"])
+    status.main()
+    out = capsys.readouterr().out
+    assert "llama3.2:3b is not installed" in out and "ollama pull llama3.2:3b" in out
+
+
+def test_status_accepts_latest_tag(monkeypatch, tmp_path, capsys):
+    (tmp_path / "config.json").write_text('{"summary": {"model": "mistral"}}')
+    monkeypatch.setattr(status, "_ollama_models", lambda url: ["mistral:latest"])
+    status.main()
+    assert "not installed" not in capsys.readouterr().out
