@@ -11,8 +11,8 @@ def calls(monkeypatch):
     monkeypatch.setattr(speaker, "summarize", lambda text, cfg: c["summarize"].append(text) or "Summary.")
     monkeypatch.setattr(speaker, "synthesize",
                         lambda text, cfg, key: c["synthesize"].append((text, key)) or Path("/tmp/a.mp3"))
-    monkeypatch.setattr(speaker, "play_file", c["play_file"].append)
-    monkeypatch.setattr(speaker, "play_say", c["play_say"].append)
+    monkeypatch.setattr(speaker, "play_file", lambda path, token: c["play_file"].append(path))
+    monkeypatch.setattr(speaker, "play_say", lambda text, token: c["play_say"].append(text))
     monkeypatch.setattr(speaker, "get_api_key", lambda: "k")
     return c
 
@@ -47,9 +47,10 @@ def test_stale_speaker_does_not_play(calls, monkeypatch):
 
 def test_stops_previous_playback_first(calls, monkeypatch):
     stopped = []
-    monkeypatch.setattr(speaker, "stop_current", lambda: stopped.append(1))
+    real = speaker.claim_and_stop
+    monkeypatch.setattr(speaker, "claim_and_stop", lambda: stopped.append(1) or real())
     speaker.speak("Done.")
-    assert len(stopped) >= 1
+    assert stopped == [1]
 
 
 def test_unexpected_error_is_logged(calls, monkeypatch, tmp_path):

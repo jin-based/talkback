@@ -53,12 +53,54 @@ def test_stop_current_garbage_pid_file_is_fine(tmp_path):
 
 def test_play_say_uses_arg_list(monkeypatch):
     _fake_popen(monkeypatch)
-    playback.play_say('He said "hi"; rm -rf')
+    playback.play_say('He said "hi"; rm -rf', playback.claim())
     assert FakeProc.started == [["say", 'He said "hi"; rm -rf']]
     assert FakeProc.pid_file_during_play == "4242"
 
 
 def test_play_file_uses_afplay(monkeypatch, tmp_path):
     _fake_popen(monkeypatch)
-    playback.play_file(tmp_path / "speech.mp3")
+    playback.play_file(tmp_path / "speech.mp3", playback.claim())
     assert FakeProc.started == [["afplay", str(tmp_path / "speech.mp3")]]
+
+
+def _lock_is_held() -> bool:
+    import fcntl
+    with open(playback.home() / "lock", "a") as f:
+        try:
+            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return True
+        fcntl.flock(f, fcntl.LOCK_UN)
+        return False
+
+
+def test_player_starts_while_holding_lock(monkeypatch):
+    held = []
+
+    class P(FakeProc):
+        def __init__(self, args, **k):
+            held.append(_lock_is_held())
+            super().__init__(args, **k)
+
+    FakeProc.started = []
+    monkeypatch.setattr(playback, "_popen", P)
+    playback.play_say("hi", playback.claim())
+    assert held == [True]
+    assert _lock_is_held() is False  # released before waiting/after
+
+
+def test_stale_token_never_starts_player(monkeypatch):
+    _fake_popen(monkeypatch)
+    old = playback.claim()
+    playback.claim()
+    playback.play_say("hi", old)
+    playback.play_file(Path("/tmp/x.mp3"), old)
+    assert FakeProc.started == []
+
+
+def test_claim_and_stop_holds_lock(monkeypatch):
+    held = []
+    monkeypatch.setattr(playback, "stop_current", lambda: held.append(_lock_is_held()))
+    token = playback.claim_and_stop()
+    assert held == [True] and playback.is_current(token)

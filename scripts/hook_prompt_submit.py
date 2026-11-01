@@ -11,8 +11,7 @@ from talkback.log import log_error  # noqa: E402
 
 def main(stdin_text: str) -> int:
     try:
-        playback.claim()  # any speaker still summarizing is now stale
-        playback.stop_current()
+        playback.claim_and_stop()  # any speaker still summarizing is now stale
     except Exception as e:
         log_error(f"hook_prompt_submit: {e!r}")
     return 0

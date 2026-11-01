@@ -15,8 +15,7 @@ def main(argv: list[str]) -> int:
         return 1
     config.set_enabled(arg == "on")
     if arg == "off":
-        playback.claim()
-        playback.stop_current()
+        playback.claim_and_stop()
     print(f"Talk-back is {arg}.")
     return 0
 

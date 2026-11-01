@@ -3,15 +3,14 @@ from __future__ import annotations
 from talkback.clean import clean
 from talkback.config import get_api_key, load_config
 from talkback.log import log_error
-from talkback.playback import claim, is_current, play_file, play_say, stop_current
+from talkback.playback import claim_and_stop, is_current, play_file, play_say
 from talkback.summarize import summarize
 from talkback.tts import synthesize
 
 
 def speak(reply: str) -> None:
     try:
-        token = claim()
-        stop_current()
+        token = claim_and_stop()
         text = clean(reply)
         if not text:
             return
@@ -20,10 +19,9 @@ def speak(reply: str) -> None:
         audio = synthesize(summary, cfg, get_api_key())
         if not is_current(token):
             return  # a newer reply took over while we were working
-        stop_current()
         if audio:
-            play_file(audio)
+            play_file(audio, token)  # re-checks the token under the lock
         else:
-            play_say(summary)
+            play_say(summary, token)
     except Exception as e:
         log_error(f"speaker: {e!r}")

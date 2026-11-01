@@ -1,6 +1,8 @@
 """Play audio, and stop whatever talkback is currently playing."""
 from __future__ import annotations
+import fcntl
 import os
+from contextlib import contextmanager
 import secrets
 import signal
 import subprocess
@@ -50,15 +52,37 @@ def stop_current() -> None:
     pid_file.unlink(missing_ok=True)
 
 
-def _run(args: list[str]) -> None:
-    proc = _popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    (home() / "playback.pid").write_text(str(proc.pid))
+@contextmanager
+def locked():
+    """One talkback process at a time may claim, stop, or start a player."""
+    with open(home() / "lock", "a") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(f, fcntl.LOCK_UN)
+
+
+def claim_and_stop() -> str:
+    with locked():
+        token = claim()
+        stop_current()
+        return token
+
+
+def _run(args: list[str], token: str) -> None:
+    with locked():
+        if not is_current(token):
+            return  # a newer reply or a new message took over
+        stop_current()
+        proc = _popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        (home() / "playback.pid").write_text(str(proc.pid))
     proc.wait()
 
 
-def play_file(path: Path) -> None:
-    _run(["afplay", str(path)])
+def play_file(path: Path, token: str) -> None:
+    _run(["afplay", str(path)], token)
 
 
-def play_say(text: str) -> None:
-    _run(["say", text])
+def play_say(text: str, token: str) -> None:
+    _run(["say", text], token)
