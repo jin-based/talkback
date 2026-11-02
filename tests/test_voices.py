@@ -96,19 +96,27 @@ def test_render_falls_back_to_say(eleven, say_calls, monkeypatch, tmp_path):
     monkeypatch.setattr(voices, "get_key", lambda service: "k")
     eleven["reply"] = urllib.error.HTTPError("u", 401, "Unauthorized", {}, io.BytesIO(b""))
     path, who = voices.render("hi", ELEVEN, "tok")
-    assert (path, who) == (tmp_path / "speech-tok.aiff", "say")
+    assert who == "say" and path.name.startswith("speech-tok-") and path.suffix == ".aiff"
     assert "elevenlabs" in (tmp_path / "log.txt").read_text()
 
 
 def test_render_uses_configured_provider(eleven, monkeypatch, tmp_path):
     monkeypatch.setattr(voices, "get_key", lambda service: "k")
-    assert voices.render("hi", ELEVEN, "tok") == (tmp_path / "speech-tok.mp3", "elevenlabs")
+    path, who = voices.render("hi", ELEVEN, "tok")
+    assert who == "elevenlabs" and path.name.startswith("speech-tok-") and path.suffix == ".mp3"
 
 
 def test_render_say_configured_no_fallback_loop(say_calls, tmp_path):
-    assert voices.render("hi", SAY, "tok") == (tmp_path / "speech-tok.aiff", "say")
-    assert len(say_calls) == 1
+    path, who = voices.render("hi", SAY, "tok")
+    assert who == "say" and path.suffix == ".aiff" and len(say_calls) == 1
 
 
-def test_audio_stem_is_per_token(tmp_path):
-    assert voices.audio_stem("abc") == tmp_path / "speech-abc"
+def test_audio_stem_is_unique_per_call(tmp_path):
+    a, b = voices.audio_stem("abc"), voices.audio_stem("abc")
+    assert a != b and a.parent == tmp_path and a.name.startswith("speech-abc-")
+
+
+def test_each_render_gets_its_own_file(say_calls):
+    p1, _ = voices.render("one", SAY, "tok")
+    p2, _ = voices.render("two", SAY, "tok")
+    assert p1 != p2 and p1.exists() and p2.exists()

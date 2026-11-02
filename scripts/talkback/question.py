@@ -16,7 +16,20 @@ _FENCED = re.compile(r"```.*?(```|\Z)", re.S)
 _INLINE = re.compile(r"`[^`\n]*`")
 _URL = re.compile(r"https?://\S+")
 _ITEM = re.compile(r"^\s*(?:\d+[.)]|[-*•+]|[a-fA-F][.)])\s+(.+?)\s*$")
-_CHOICE = re.compile(r"\b(which|choose|pick|prefer|option|options|or)\b", re.I)
+_CHOICE = re.compile(r"\b(which|choose|pick|prefer|option|options)\b", re.I)
+_ABBREV = {"e.g.", "i.e.", "vs.", "etc.", "mr.", "mrs.", "ms.", "dr.", "st.", "no.", "approx.", "cf."}
+_GAP = re.compile(r"(?<=[.!?])\s+")
+
+
+def _last_sentence(text: str) -> str:
+    start = 0
+    for m in _GAP.finditer(text):
+        before = text[:m.start()].split()
+        last = before[-1].lower().lstrip("([\"'") if before else ""
+        if last in _ABBREV or re.fullmatch(r"[a-z]\.", last):
+            continue  # "vs." / "e.g." / "A." don't end a sentence
+        start = m.end()
+    return text[start:].strip()
 
 
 def _strip_blank_tail(lines: list[str]) -> None:
@@ -39,8 +52,7 @@ def extract(reply: str) -> tuple[str, list[str]] | None:
     _strip_blank_tail(lines)
     if not lines:
         return None
-    sentences = re.split(r"(?<=[.!?])\s+", clean(lines[-1]))
-    q = sentences[-1].strip() if sentences else ""
+    q = _last_sentence(clean(lines[-1]))
     if not q.endswith("?"):
         return None
     options = after

@@ -80,7 +80,8 @@ def test_kokoro_without_uv_falls_back(monkeypatch, say_ok, models, tmp_path):
         raise FileNotFoundError("uv")
 
     monkeypatch.setattr(kokoro, "_popen", no_uv)
-    assert voices.render("hi", KOKORO, "t") == (tmp_path / "speech-t.aiff", "say")
+    path, who = voices.render("hi", KOKORO, "t")
+    assert who == "say" and path.suffix == ".aiff"
     assert "kokoro" in (tmp_path / "log.txt").read_text()
 
 
@@ -89,7 +90,7 @@ def test_kokoro_timeout_kills_process_and_falls_back(procs, monkeypatch, say_ok,
     opts["hang"] = True
     killed = []
     monkeypatch.setattr(kokoro, "_killpg", killed.append)
-    assert voices.render("hi", KOKORO, "t") == (tmp_path / "speech-t.aiff", "say")
+    assert voices.render("hi", KOKORO, "t")[1] == "say"
     assert killed == [777]
 
 
@@ -110,7 +111,7 @@ def test_models_present(tmp_path):
 
 def test_missing_model_starts_background_download_and_falls_back(procs, say_ok, tmp_path):
     made, _ = procs
-    assert voices.render("hi", KOKORO, "t") == (tmp_path / "speech-t.aiff", "say")
+    assert voices.render("hi", KOKORO, "t")[1] == "say"
     assert len(made) == 1 and "--download-only" in made[0].args
     assert made[0].kwargs.get("start_new_session") is True
     assert made[0].input is None  # detached: we never wait on it

@@ -1,6 +1,7 @@
 """Pick the configured voice; fall back to the Mac voice on any failure."""
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 from talkback.config import VoiceSettings, get_key, home
@@ -13,7 +14,7 @@ SYSTEM_SAY = VoiceSettings("say", "", "")
 
 
 def audio_stem(token: str) -> Path:
-    return home() / f"speech-{token}"
+    return home() / f"speech-{token}-{time.time_ns()}"  # unique per render: two alerts never share a file
 
 
 def render(text: str, s: VoiceSettings, token: str) -> tuple[Path, str]:

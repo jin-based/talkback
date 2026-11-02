@@ -8,7 +8,7 @@ from pathlib import Path
 
 from talkback import queue, sessions, voices
 from talkback.clean import clean
-from talkback.config import home, load_config
+from talkback.config import home, is_enabled, load_config
 from talkback.log import log_error
 from talkback.question import NUMBER_WORDS, MAX_OPTIONS
 from talkback.speaker import voice_for
@@ -17,17 +17,41 @@ PENDING_MAX_AGE_S = 60
 MAX_COMMAND_WORDS = 8
 EDIT_TOOLS = {"Edit", "Write", "MultiEdit", "NotebookEdit"}
 _LONG = re.compile(r"[A-Za-z0-9_\-+/=.]{20,}")
+_ATTACHED = re.compile(r"^-[pPu].+")  # -pS3cret, -uroot
+SECRET_FLAGS = {"-p", "-P", "-u", "--user", "--password", "--pass", "-H", "--header", "--token", "--with-token",
+                "--api-key", "--key", "--secret", "--auth", "bearer", "authorization:", "basic"}
 
 
 def _redact(word: str) -> str:
-    return "a long value" if _LONG.search(word) else word  # never speak or send tokens/keys
+    return "a long value" if _LONG.search(word) else word
+
+
+def _redact_command(words: list[str]) -> list[str]:
+    """Never speak (or send to a voice service) anything that could be a password, token or key."""
+    out: list[str] = []
+    skip_next = False
+    for w in words:
+        bare = w.strip("'\"")
+        if skip_next:
+            word, skip_next = "a value", bare.endswith(":")
+        elif bare.lower() in SECRET_FLAGS:
+            word, skip_next = bare, True
+        elif bare.lower().startswith(("http://", "https://")):
+            word = "a web address"
+        elif "=" in bare or ":" in bare or "@" in bare or _ATTACHED.match(bare):
+            word, skip_next = "a value", bare.endswith(":")
+        else:
+            word = _redact(w)
+        if not (word == "a value" and out and out[-1] == "a value"):
+            out.append(word)
+    return out
 
 
 def permission_short(tool_name: str, tool_input: dict) -> str:
     tool_input = tool_input if isinstance(tool_input, dict) else {}
     if tool_name == "Bash":
         words = str(tool_input.get("command", "")).split()[:MAX_COMMAND_WORDS]
-        return "run " + " ".join(_redact(w) for w in words) if words else "run a command"
+        return "run " + " ".join(_redact_command(words)) if words else "run a command"
     if tool_name in EDIT_TOOLS:
         name = Path(str(tool_input.get("file_path") or tool_input.get("notebook_path") or "")).name
         return f"edit {_redact(name)}" if name else "edit a file"
@@ -49,6 +73,9 @@ def _say(hook: dict, text: str) -> None:
     token = sessions.current_token(session) or sessions.claim(session)
     cfg = load_config()
     path, _ = voices.render(text, voice_for(cfg, sessions.project_folder(hook)), token)
+    if not is_enabled():  # turned off while we were rendering
+        path.unlink(missing_ok=True)
+        return
     queue.enqueue(session, token, path, "alert", front=True)
     queue.run_player()
 

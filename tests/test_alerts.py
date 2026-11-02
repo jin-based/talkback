@@ -116,3 +116,27 @@ def test_hooks_skip_when_off(said):
     config.set_enabled(False)
     hook_notification.main(json.dumps({**HOOK, "notification_type": "idle_prompt"}))
     assert said == []
+
+
+@pytest.mark.parametrize("cmd,secret", [
+    ("curl -u admin:hunter2 https://x", "hunter2"),
+    ("mysql -uroot -pS3cret db", "S3cret"),
+    ("PGPASSWORD=pa55 psql", "pa55"),
+    ("curl -H 'X-Api-Key: abc123' https://x", "abc123"),
+    ("export TOKEN=xyz && deploy", "xyz"),
+    ("gh auth login --with-token mysecret", "mysecret"),
+])
+def test_permission_short_redacts_short_secrets(cmd, secret):
+    out = alerts.permission_short("Bash", {"command": cmd})
+    assert secret not in out and out.startswith("run ")
+
+
+def test_permission_short_keeps_plain_commands():
+    assert alerts.permission_short("Bash", {"command": "git push origin main"}) == "run git push origin main"
+    assert alerts.permission_short("Bash", {"command": "npm run build"}) == "run npm run build"
+
+
+def test_alerts_not_queued_after_off(said):
+    config.set_enabled(False)
+    alerts.on_notification({**HOOK, "notification_type": "idle_prompt"})
+    assert said == [] or "front" not in said[-1]

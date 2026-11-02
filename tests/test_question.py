@@ -74,3 +74,17 @@ def test_speaker_appends_question_part(tmp_path):
 def test_list_before_non_choice_question_is_not_options():
     reply = "Changes:\n- Fixed login\n- Added tests\n\nWant me to push?"
     assert question.extract(reply) == ("Want me to push?", [])
+
+
+@pytest.mark.parametrize("reply,q", [
+    ("Should I use Node vs. Deno?", "Should I use Node vs. Deno?"),
+    ("Done. Should I proceed (e.g. merge)?", "Should I proceed (e.g. merge)?"),
+    ("Fixed it. Want the i.e. version or the full one?", "Want the i.e. version or the full one?"),
+])
+def test_abbreviations_dont_split_question(reply, q):
+    assert question.extract(reply)[0] == q
+
+
+def test_or_question_after_change_list_has_no_options():
+    reply = "Changes:\n1. Fixed the parser\n2. Added tests\n\nShould I commit now or wait?"
+    assert question.extract(reply) == ("Should I commit now or wait?", [])

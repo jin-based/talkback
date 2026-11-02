@@ -5,7 +5,7 @@ from dataclasses import replace
 
 from talkback import question, queue, sessions, summarizers, voices
 from talkback.clean import clean
-from talkback.config import Config, VoiceSettings, load_config
+from talkback.config import Config, VoiceSettings, is_enabled, load_config
 from talkback.log import log_error
 
 
@@ -39,8 +39,8 @@ def speak(reply: str, hook: dict) -> None:
         spoken = compose(summary, question_part(reply, cfg), sessions.project_name(folder, cfg),
                          sessions.active_count())
         path, _ = voices.render(spoken, voice_for(cfg, folder), token)
-        if not sessions.is_current(session, token):
-            return  # a newer reply or a new message in this session took over
+        if not sessions.is_current(session, token) or not is_enabled():
+            return  # a newer reply or a new message took over, or talk-back was turned off meanwhile
         queue.enqueue(session, token, path, "summary", front=False)
         path = None  # the queue owns the audio file now
         queue.run_player()

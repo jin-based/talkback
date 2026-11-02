@@ -59,7 +59,7 @@ talkback also speaks up when Claude is stuck waiting on you. Alerts jump ahead o
 | Waiting for your reply (~60 s after Claude finished) | *"horizon is waiting for you."* | `alerts.idle` |
 | Claude asks a multiple-choice question | *"talkback asks: which database? Option one, Postgres…"* | `alerts.questions` |
 
-All are on by default. Turn one off by asking (*"stop the waiting alerts"*) or with `/talkback:setup`. Long values in commands, such as tokens, are spoken as "a long value" and never sent anywhere.
+All are on by default. Turn one off by asking (*"stop the waiting alerts"*) or with `/talkback:setup`. Anything in a command that could be a password, token or key (values after `-p`, `--token`, `-H` or `Bearer`, `NAME=value`, `user:pass`, long strings) is spoken as "a value", so it is never read aloud or sent to a voice service. Web addresses are spoken as "a web address".
 
 ## Questions, read word for word
 

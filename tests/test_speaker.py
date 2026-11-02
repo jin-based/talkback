@@ -83,3 +83,17 @@ def test_unexpected_error_is_logged(rec, monkeypatch, tmp_path):
 def test_compose():
     assert speaker.compose("Done.", " It asks: ok?", "horizon", 1) == "Done. It asks: ok?"
     assert speaker.compose("Done.", "", "horizon", 2) == "horizon: Done."
+
+
+def test_not_enqueued_if_turned_off_meanwhile(rec, monkeypatch):
+    from talkback import config
+    real = speaker.voices.render
+
+    def render_then_off(text, s, token):
+        out = real(text, s, token)
+        config.set_enabled(False)
+        return out
+
+    monkeypatch.setattr(speaker.voices, "render", render_then_off)
+    speaker.speak("Done.", HOOK)
+    assert rec["enqueued"] == [] and not rec["render"][-1][2].exists()
