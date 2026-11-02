@@ -39,6 +39,12 @@ def _kokoro() -> list[Voice]:
     return [Voice(i[3:].capitalize(), i, f"{_ACCENT[i[0]]} {_GENDER[i[1]]}") for i in KOKORO_IDS]
 
 
+def all_say_names() -> set[str]:
+    """Every installed Mac voice name, any language (lower-case)."""
+    out = _run(["say", "-v", "?"], capture_output=True, text=True, timeout=10).stdout
+    return {m.group(1).strip().lower() for m in map(_SAY_LINE.match, out.splitlines()) if m}
+
+
 def _say() -> list[Voice]:
     out = _run(["say", "-v", "?"], capture_output=True, text=True, timeout=10).stdout
     voices = []

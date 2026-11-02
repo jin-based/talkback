@@ -5,7 +5,7 @@ import time
 
 from talkback.config import home
 
-SESSION_MAX_AGE_S = 86400   # .seen / .token notes for sessions idle a day
+SESSION_MAX_AGE_S = 86400   # .seen notes for sessions idle a day (.token files are kept: tiny, and still needed)
 PENDING_MAX_AGE_S = 3600    # permission details never used
 AUDIO_MAX_AGE_S = 3600      # speech files left behind by a crashed hook
 
@@ -13,7 +13,7 @@ AUDIO_MAX_AGE_S = 3600      # speech files left behind by a crashed hook
 def prune() -> None:
     now = time.time()
     root = home()
-    rules = [(root / "sessions", ("*.seen", "*.token"), SESSION_MAX_AGE_S),
+    rules = [(root / "sessions", ("*.seen",), SESSION_MAX_AGE_S),
              (root / "pending", ("*.json",), PENDING_MAX_AGE_S),
              (root, ("speech-*",), AUDIO_MAX_AGE_S)]
     for folder, patterns, max_age in rules:

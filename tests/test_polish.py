@@ -37,8 +37,9 @@ def test_prune_removes_old_files_only(tmp_path):
     _age(old_pend, 2 * 3600)
     _age(old_audio, 2 * 3600)
     housekeeping.prune()
-    assert not old_seen.exists() and not old_tok.exists() and not old_pend.exists() and not old_audio.exists()
+    assert not old_seen.exists() and not old_pend.exists() and not old_audio.exists()
     assert new_seen.exists() and new_audio.exists()
+    assert old_tok.exists()  # tokens are never pruned: an idle session's next alert still needs it
 
 
 def test_player_prunes(monkeypatch):
@@ -148,7 +149,7 @@ def test_status_flags_missing_mac_voice(tmp_path, monkeypatch, capsys):
     (tmp_path / "config.json").write_text('{"voice": {"provider": "say", "voice": "Nobody"}}')
     monkeypatch.setattr(status, "_ollama_models", lambda url: None)
     monkeypatch.setattr(status, "_keychain_has", lambda s: False)
-    monkeypatch.setattr(status, "list_voices", lambda p, k: [Voice("Samantha", "Samantha", "en_US")])
+    monkeypatch.setattr(status, "all_say_names", lambda: {"samantha"})
     status.main()
     assert "Mac voice Nobody isn't installed" in capsys.readouterr().out
 
@@ -180,3 +181,18 @@ def test_config_written_atomically(tmp_path, monkeypatch):
     monkeypatch.setattr(configure.os, "replace", lambda a, b: replaced.append(Path(b).name) or real(a, b))
     configure.main(["voice.provider=kokoro"])
     assert replaced == ["config.json"] and not list(tmp_path.glob("config.json.*"))
+
+
+def test_status_accepts_non_english_mac_voice(tmp_path, monkeypatch, capsys):
+    (tmp_path / "config.json").write_text('{"voice": {"provider": "say", "voice": "Kyoko"}}')
+    monkeypatch.setattr(status, "_ollama_models", lambda url: None)
+    monkeypatch.setattr(status, "_keychain_has", lambda s: False)
+    monkeypatch.setattr(status, "all_say_names", lambda: {"samantha", "kyoko"})
+    status.main()
+    assert "isn't installed" not in capsys.readouterr().out
+
+
+def test_key_without_service_warns(capsys):
+    assert set_key.main(["sk-ant-abcdefghijklmnopqrstu"]) == 1
+    out = capsys.readouterr().out
+    assert "looks like an API key" in out and "sk-ant" not in out

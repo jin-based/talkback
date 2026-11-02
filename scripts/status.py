@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from talkback import config  # noqa: E402
 from talkback.voices import kokoro  # noqa: E402
-from talkback.voices.catalog import list_voices  # noqa: E402
+from talkback.voices.catalog import all_say_names  # noqa: E402
 
 
 def _ollama_models(url: str) -> list[str] | None:
@@ -41,8 +41,7 @@ def main() -> int:
                                    f"(run: ollama pull {s.model}); summaries will use the first sentence"]
     if v.provider == "say" and v.voice:
         try:
-            names = {x.name.lower() for x in list_voices("say", None)}
-            if v.voice.lower() not in names:
+            if v.voice.lower() not in all_say_names():
                 problems = problems + [f"voice: Mac voice {v.voice} isn't installed, so the system voice is used "
                                        f"(see /talkback:voices)"]
         except Exception:
