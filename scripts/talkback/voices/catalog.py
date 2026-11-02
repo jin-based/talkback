@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+import urllib.error
 import urllib.request
 from dataclasses import dataclass
 
@@ -51,7 +52,14 @@ def _say() -> list[Voice]:
 def _elevenlabs(key: str | None) -> list[Voice]:
     if not key:
         raise RuntimeError("no ElevenLabs key (run /talkback:key elevenlabs)")
-    data = _get_json(ELEVEN_VOICES_URL, {"xi-api-key": key}, 8)
+    try:
+        data = _get_json(ELEVEN_VOICES_URL, {"xi-api-key": key}, 8)
+    except urllib.error.HTTPError as e:
+        if e.code in (401, 403):
+            raise RuntimeError("ElevenLabs refused to list voices. Your API key probably lacks the "
+                               "'Voices: Read' permission: edit the key on elevenlabs.io (Developers, API Keys) "
+                               "and allow it, or use a voice ID directly.") from None
+        raise
     if not isinstance(data, dict) or "voices" not in data:
         raise RuntimeError(f"unexpected response from ElevenLabs: {str(data)[:200]}")
     out = []

@@ -107,3 +107,15 @@ def test_list_failure_exits_1(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(voices_cli, "get_key", lambda service: None)
     assert voices_cli.main(["list"]) == 1
     assert "/talkback:key elevenlabs" in capsys.readouterr().out
+
+
+def test_elevenlabs_401_explains_permission(monkeypatch):
+    import io
+    import urllib.error
+
+    def raise_401(*a):
+        raise urllib.error.HTTPError("u", 401, "Unauthorized", {}, io.BytesIO(b""))
+
+    monkeypatch.setattr(catalog, "_get_json", raise_401)
+    with pytest.raises(RuntimeError, match="Voices.*Read"):
+        catalog.list_voices("elevenlabs", "k")

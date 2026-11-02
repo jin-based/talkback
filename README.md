@@ -40,6 +40,31 @@ When Claude finishes a reply, talkback:
 
 If any step fails (model not running, no key, no internet), talkback falls back quietly. A summary falls back to the reply's first sentence; a voice falls back to the Mac voice. It runs in the background and never slows Claude Code down. A newer reply cuts off an older one, and sending a message stops it talking.
 
+## Several sessions at once
+
+Running Claude in more than one project? talkback handles it:
+
+- **Nothing gets cut off.** Summaries from different sessions wait in line and play one after another.
+- **You know which project spoke.** When two or more sessions have been active in the last 5 minutes, each summary starts with the project's name: *"horizon: the build passes."*
+- **Newest wins within a session.** If a session finishes again before its last summary played, you only hear the newer one. Sending a message stops only that session's speech.
+- **Optional per-project voices and names.** Say *"use Bella for the horizon project"* or *"call this project Horizon"*.
+
+## "Claude needs you" alerts
+
+talkback also speaks up when Claude is stuck waiting on you. Alerts jump ahead of summaries:
+
+| Alert | You hear | Switch |
+|---|---|---|
+| Permission request (after it has waited ~6 s) | *"talkback needs approval: run git push"* | `alerts.permission` |
+| Waiting for your reply (~60 s after Claude finished) | *"horizon is waiting for you."* | `alerts.idle` |
+| Claude asks a multiple-choice question | *"talkback asks: which database? Option one, Postgres…"* | `alerts.questions` |
+
+All are on by default. Turn one off by asking (*"stop the waiting alerts"*) or with `/talkback:setup`. Long values in commands, such as tokens, are spoken as "a long value" and never sent anywhere.
+
+## Questions, read word for word
+
+When Claude's reply ends with a question for you, you hear the summary and then the question itself, with any options: *"Fixed the login bug. It asks: should I also update the docs?"* Very long questions are shortened by your summary model.
+
 ## Choose your models
 
 ### Summary model
@@ -57,7 +82,7 @@ If any step fails (model not running, no key, no internet), talkback falls back 
 |---|---|---|---|
 | `say` (default) | Free | Nothing | Built-in Mac voice. Downloaded "Premium" voices in System Settings sound better |
 | `kokoro` | Free | [`uv`](https://docs.astral.sh/uv/) (`brew install uv`); ~140 MB model downloads on first use | **Recommended upgrade.** Natural-sounding, runs on your Mac, about 1 s per sentence. `/talkback:setup` does the first download for you; if you switch to it by hand, the Mac voice fills in while it downloads in the background |
-| `elevenlabs` | Paid (free credits to start) | ElevenLabs API key | The most natural voice; pick any voice from your ElevenLabs library |
+| `elevenlabs` | Paid (free credits to start) | ElevenLabs API key | The most natural voice; pick any voice from your library by name with `/talkback:voices` (the key needs the "Voices: Read" permission for the list) |
 
 **Suggested path:** start with the defaults, then switch the voice to Kokoro (free). Add a paid option only if you want it.
 
@@ -66,6 +91,7 @@ If any step fails (model not running, no key, no internet), talkback falls back 
 | Command | What it does |
 |---|---|
 | `/talkback:setup` | See what's set, choose models, test the voice |
+| `/talkback:voices` | List voices for your current provider by name. Then say "preview Bella" or "use Bella" |
 | `/talkback:key <service>` | Save an API key (`elevenlabs`, `anthropic` or `openai`) through a private pop-up |
 | `/talkback:key <service> remove` | Delete a saved key |
 | `/talkback:on` / `/talkback:off` | Turn spoken summaries on or off |
@@ -86,8 +112,10 @@ You can also just ask in plain words, for example "switch the voice to Kokoro", 
 
 ```json
 {
-  "summary": { "provider": "ollama", "model": "llama3.2:3b", "url": "http://localhost:11434" },
-  "voice":   { "provider": "kokoro", "voice": "af_heart" }
+  "summary":  { "provider": "ollama", "model": "llama3.2:3b", "url": "http://localhost:11434" },
+  "voice":    { "provider": "kokoro", "voice": "af_heart" },
+  "projects": { "horizon": { "name": "Horizon", "voice": "af_bella" } },
+  "alerts":   { "permission": true, "idle": true, "questions": true }
 }
 ```
 
@@ -103,7 +131,6 @@ You can also just ask in plain words, for example "switch the voice to Kokoro", 
 - Not hearing the voice or model you chose? Run `/talkback:setup`. It shows what's working, and its test reports any fallback and why.
 - Errors are logged to `~/.claude/talkback/log.txt`.
 - Set `TALKBACK_HOME` to use a different data folder.
-- All Claude Code sessions share one voice: the latest reply from any session plays, and a message in any session stops it.
 
 ## Development
 
