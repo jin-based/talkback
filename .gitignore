@@ -2,3 +2,4 @@ handoffs/
 __pycache__/
 .pytest_cache/
 .superpowers/
+docs/decisions.md
