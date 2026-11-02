@@ -1,3 +1,5 @@
+<img src=".claude-plugin/icon.png" alt="talkback icon" width="96" align="right">
+
 # talkback
 
 **Hear what Claude did.** talkback is a [Claude Code](https://claude.com/claude-code) plugin that speaks a short summary of each Claude reply out loud. It also speaks up when Claude needs you.

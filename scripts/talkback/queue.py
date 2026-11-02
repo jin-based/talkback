@@ -8,6 +8,7 @@ import subprocess
 import time
 from pathlib import Path
 
+from talkback import housekeeping
 from talkback.config import home
 from talkback.log import log_error
 from talkback.playback import _comm, _kill, _popen  # noqa: F401  (re-exported seams for tests)
@@ -86,18 +87,22 @@ def _drain() -> None:
             log_error(f"queue: playback failed: {e!r}")
 
 
-def run_player() -> None:
+def run_player() -> bool:
+    """Play the queue. Returns False if another session's player is already running (it will play our item)."""
+    played = False
     while True:
         lock = _try_lock()
         if lock is None:
-            return  # another session's player will play our item
+            return played
+        played = True
         try:
+            housekeeping.prune()
             _drain()
         finally:
             fcntl.flock(lock, fcntl.LOCK_UN)
             lock.close()
         if not _items():  # something may have arrived while we were unlocking
-            return
+            return played
 
 
 def _stop_playing(only_session: str | None) -> None:

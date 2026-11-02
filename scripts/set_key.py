@@ -18,6 +18,11 @@ USAGE = "Usage: /talkback:key elevenlabs|anthropic|openai [remove]"
 NAMES = {"elevenlabs": "ElevenLabs", "anthropic": "Anthropic", "openai": "OpenAI"}
 
 
+def _looks_like_key(text: str) -> bool:
+    t = text.strip()
+    return len(t) >= 16 and " " not in t
+
+
 class DialogError(Exception):
     pass
 
@@ -35,6 +40,12 @@ def _ask(service: str) -> str | None:
 
 
 def main(argv: list[str]) -> int:
+    if len(argv) >= 2 and argv[1] != "remove" and _looks_like_key(" ".join(argv[1:])):
+        print("That looks like an API key, typed into the command itself, so it's now in this chat's history. "
+              "Consider replacing (rotating) that key with the provider. "
+              f"Run /talkback:key {argv[0] if argv[0] in KEY_SERVICES else '<service>'} on its own and paste the key "
+              "into the pop-up instead.")
+        return 1
     if not argv or argv[0] not in KEY_SERVICES or argv[1:] not in ([], ["remove"]):
         print(USAGE)
         return 1
@@ -58,7 +69,9 @@ def main(argv: list[str]) -> int:
         return 0
     r = _run(["security", "-i"], input=f'add-generic-password -U -s talkback-{service} -a talkback -w "{key}"\n',
              capture_output=True, text=True)
-    if r.returncode != 0:
+    check = _run(["security", "find-generic-password", "-s", f"talkback-{service}", "-a", "talkback"],
+                 capture_output=True)
+    if r.returncode != 0 or check.returncode != 0:
         print("Could not save the key in the Keychain.")
         return 1
     print(f"Saved your {service} key in the macOS Keychain.")

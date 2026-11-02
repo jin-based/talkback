@@ -1,6 +1,6 @@
 {
   "name": "talkback",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Speaks a short summary of each Claude reply. Choose your summary model and voice.",
   "license": "MIT",
   "author": {
@@ -8,5 +8,6 @@
     "url": "https://github.com/jin-based"
   },
   "homepage": "https://github.com/jin-based/talkback",
-  "repository": "https://github.com/jin-based/talkback"
+  "repository": "https://github.com/jin-based/talkback",
+  "icon": "./.claude-plugin/icon.png"
 }

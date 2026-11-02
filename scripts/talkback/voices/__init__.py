@@ -5,7 +5,7 @@ import time
 from pathlib import Path
 
 from talkback.config import VoiceSettings, get_key, home
-from talkback.log import log_error
+from talkback.log import describe, log_error
 from talkback.voices import elevenlabs, kokoro, say
 
 PROVIDERS = {"say": say, "kokoro": kokoro, "elevenlabs": elevenlabs}
@@ -25,6 +25,6 @@ def render(text: str, s: VoiceSettings, token: str) -> tuple[Path, str]:
             key = get_key(s.provider) if s.provider in KEYED else None
             return PROVIDERS[s.provider].synthesize(text, s, key, stem), s.provider
         except Exception as e:
-            log_error(f"voice: {s.provider} failed: {e!r}; using the Mac voice")
+            log_error(f"voice: {s.provider} failed: {describe(e)}; using the Mac voice")
             s = SYSTEM_SAY
     return say.synthesize(text, s, None, stem), "say"

@@ -38,20 +38,30 @@ def _strip_blank_tail(lines: list[str]) -> None:
 
 
 def _take_items(lines: list[str]) -> list[str]:
-    items: list[str] = []
+    found: list[tuple[int, str]] = []
     while lines and _ITEM.match(lines[-1]):
-        items.insert(0, _ITEM.match(lines.pop()).group(1))
-    return items
+        line = lines.pop()
+        found.insert(0, (len(line) - len(line.lstrip()), _ITEM.match(line).group(1)))
+    if not found:
+        return []
+    top = min(indent for indent, _ in found)
+    return [text for indent, text in found if indent == top]  # nested bullets are details, not options
 
 
 def extract(reply: str) -> tuple[str, list[str]] | None:
     text = _URL.sub(" ", _INLINE.sub(" ", _FENCED.sub("", reply or "")))
-    lines = [line.rstrip() for line in text.splitlines()]
+    lines = [re.sub(r"^\s*>\s?", "", line).rstrip() for line in text.splitlines()]  # blockquotes
     _strip_blank_tail(lines)
     after = _take_items(lines)
     _strip_blank_tail(lines)
     if not lines:
         return None
+    if lines[-1].lstrip().startswith("#"):
+        return None  # a heading isn't a question to the user
+    para: list[str] = []
+    while lines and lines[-1].strip() and not _ITEM.match(lines[-1]) and not lines[-1].lstrip().startswith("#"):
+        para.insert(0, lines.pop().strip())  # a hard-wrapped last paragraph
+    lines.append(" ".join(para))
     q = _last_sentence(clean(lines[-1]))
     if not q.endswith("?"):
         return None

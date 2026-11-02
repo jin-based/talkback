@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 
 from talkback.clean import clean, first_sentence
 from talkback.config import SummarySettings, get_key
-from talkback.log import log_error
+from talkback.log import describe, log_error
 from talkback.summarizers import anthropic, none, ollama, openai
 from talkback.summarizers.prompt import MAX_CHARS, SYSTEM_PROMPT  # noqa: F401  (re-exported)
 
@@ -35,5 +35,5 @@ def run_detailed(text: str, s: SummarySettings, system: str | None = None) -> tu
             return out, False
         raise RuntimeError("empty summary")
     except Exception as e:
-        log_error(f"summarize: {s.provider} failed: {e!r}; using first sentence")
+        log_error(f"summarize: {s.provider} failed: {describe(e)}; using first sentence")
         return first_sentence(text), True

@@ -18,6 +18,8 @@ def runs(monkeypatch):
             return subprocess.CompletedProcess(args, rec["dialog_rc"], stdout=rec["dialog_out"], stderr=err)
         if args[:2] == ["security", "-i"]:
             return subprocess.CompletedProcess(args, rec["security_rc"], stdout="", stderr="")
+        if args[:2] == ["security", "find-generic-password"]:
+            return subprocess.CompletedProcess(args, rec["security_rc"], stdout="", stderr="")
         if args[:2] == ["security", "delete-generic-password"]:
             return subprocess.CompletedProcess(args, rec["delete_rc"], stdout="", stderr="")
         raise AssertionError(args)
@@ -28,7 +30,7 @@ def runs(monkeypatch):
 
 def test_saves_key_via_stdin(runs, capsys):
     assert set_key.main(["elevenlabs"]) == 0
-    sec = [c for c in runs["calls"] if c["args"][0] == "security"][0]
+    sec = [c for c in runs["calls"] if c["args"][:2] == ["security", "-i"]][0]
     assert sec["args"] == ["security", "-i"]
     assert sec["input"] == f'add-generic-password -U -s talkback-elevenlabs -a talkback -w "{KEY}"\n'
     assert capsys.readouterr().out.strip() == "Saved your elevenlabs key in the macOS Keychain."

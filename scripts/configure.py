@@ -64,7 +64,10 @@ def main(argv: list[str]) -> int:
             node.pop(path[-1], None)
         else:
             node[path[-1]] = value
-    (config.home() / "config.json").write_text(json.dumps(raw, indent=2) + "\n")
+    target = config.home() / "config.json"
+    tmp = target.with_name(f"config.json.{os.getpid()}.tmp")
+    tmp.write_text(json.dumps(raw, indent=2) + "\n")
+    os.replace(tmp, target)  # readers never see a half-written file
     shown = lambda v: ("on" if v else "off") if isinstance(v, bool) else v
     print("Saved: " + ", ".join(".".join(p) + "=" + str(shown(v)) for p, v in changes))
     return 0

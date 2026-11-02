@@ -66,12 +66,20 @@ def main(argv: list[str]) -> int:
         if v is None:
             return 1
         if action == "preview":
-            token = sessions.claim(PREVIEW_SESSION)
-            path, who = voices.render(f"Hi, this is {v.name}.", replace(cfg.voice, voice=v.id), token)
-            queue.enqueue(PREVIEW_SESSION, token, path, "alert", front=True)
-            queue.run_player()
-            print(f"Played a sample of {v.name}." if who == cfg.voice.provider
-                  else f"{cfg.voice.provider} failed, so the Mac voice played instead (see the log).")
+            try:
+                token = sessions.claim(PREVIEW_SESSION)
+                path, who = voices.render(f"Hi, this is {v.name}.", replace(cfg.voice, voice=v.id), token)
+                queue.enqueue(PREVIEW_SESSION, token, path, "alert", front=True)
+                played_now = queue.run_player()
+            except Exception as e:
+                print(f"Couldn't play a sample of {v.name}: {e}")
+                return 1
+            if who != cfg.voice.provider:
+                print(f"{cfg.voice.provider} failed, so the sample uses the Mac voice (see the log).")
+            elif played_now:
+                print(f"Played a sample of {v.name}.")
+            else:
+                print(f"A sample of {v.name} will play right after what's speaking now.")
             return 0
         field = f"projects.{project}.voice" if project else "voice.voice"
         if configure.main([f"{field}={v.id}"]) != 0:

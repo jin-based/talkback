@@ -36,7 +36,7 @@ def test_permission_short_bash_edit_other():
     assert alerts.permission_short("Bash", {"command": "a b c d e f g h i j"}) == "run a b c d e f g h"
     assert alerts.permission_short("Edit", {"file_path": "/x/y/README.md"}) == "edit README.md"
     assert alerts.permission_short("Write", {}) == "edit a file"
-    assert alerts.permission_short("WebFetch", {"url": "https://x"}) == "use WebFetch"
+    assert alerts.permission_short("WebFetch", {"url": "https://x"}) == "fetch a web page"
 
 
 def test_permission_short_redacts_long_values():

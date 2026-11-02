@@ -55,7 +55,25 @@ def permission_short(tool_name: str, tool_input: dict) -> str:
     if tool_name in EDIT_TOOLS:
         name = Path(str(tool_input.get("file_path") or tool_input.get("notebook_path") or "")).name
         return f"edit {_redact(name)}" if name else "edit a file"
-    return f"use {tool_name or 'a tool'}"
+    return tool_phrase(tool_name)
+
+
+TOOL_PHRASES = {"WebFetch": "fetch a web page", "WebSearch": "search the web", "Read": "read a file",
+                "Glob": "search for files", "Grep": "search inside files", "ExitPlanMode": "approve the plan",
+                "Task": "start a helper agent", "Agent": "start a helper agent", "Skill": "use a skill"}
+
+
+def tool_phrase(tool_name: str) -> str:
+    if not tool_name:
+        return "use a tool"
+    if tool_name in TOOL_PHRASES:
+        return TOOL_PHRASES[tool_name]
+    if tool_name.startswith("mcp__"):
+        parts = [p for p in tool_name.split("__")[1:] if p]
+        words = " ".join(re.sub(r"[_\-]+", " ", p) for p in parts).strip()
+        return f"use the {words} tool" if words else "use a tool"
+    words = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", tool_name).replace("_", " ").lower()
+    return f"use {words}"
 
 
 def _pending_path(session: str) -> Path:

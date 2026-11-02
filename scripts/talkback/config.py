@@ -137,9 +137,21 @@ def validate(raw) -> tuple[Config, list[str]]:
         raw = {}
     cfg = Config(_summary(raw.get("summary"), problems), _voice(raw.get("voice"), problems),
                  _projects(raw.get("projects"), problems), _alerts(raw.get("alerts"), problems))
+    _log_problems_once(problems)
+    return cfg, problems
+
+
+def _log_problems_once(problems: list[str]) -> None:
+    marker = home() / ".last_problems"
+    current = "\n".join(problems)
+    try:
+        if marker.exists() and marker.read_text() == current:
+            return
+        marker.write_text(current)
+    except OSError:
+        pass
     for p in problems:
         log_error(p)
-    return cfg, problems
 
 
 def read_raw() -> dict:
