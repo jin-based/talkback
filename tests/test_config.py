@@ -92,3 +92,28 @@ def test_get_key_env_false_skips_env(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "env-key")
     fake = lambda args, **k: subprocess.CompletedProcess(args, 0, stdout="kc\n", stderr="")
     assert config.get_key("openai", run=fake, env=False) == "kc"
+
+
+def test_projects_and_alerts_defaults():
+    c = config.load_config()
+    assert c.projects == {} and c.alerts == config.AlertSettings(True, True, True)
+
+
+def test_projects_parsed(tmp_path):
+    _write(tmp_path, {"projects": {"horizon": {"name": "Horizon", "voice": "af_bella", "x": 1}, "t": {"voice": 5}}})
+    p = config.load_config().projects
+    assert p["horizon"] == config.ProjectSettings("Horizon", "af_bella") and p["t"] == config.ProjectSettings("", "5")
+
+
+def test_bad_projects_section_falls_back(tmp_path):
+    _write(tmp_path, {"projects": ["horizon"], "voice": {"provider": "kokoro"}})
+    c = config.load_config()
+    assert c.projects == {} and c.voice.provider == "kokoro"
+    assert "projects" in (tmp_path / "log.txt").read_text()
+
+
+def test_alert_non_bool_falls_back_true(tmp_path):
+    _write(tmp_path, {"alerts": {"idle": False, "permission": "nope"}})
+    a = config.load_config().alerts
+    assert a == config.AlertSettings(True, False, True)
+    assert "alerts" in (tmp_path / "log.txt").read_text()

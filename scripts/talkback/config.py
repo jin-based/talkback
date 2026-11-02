@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from talkback.log import log_error
@@ -35,9 +35,27 @@ class VoiceSettings:
 
 
 @dataclass(frozen=True)
+class ProjectSettings:
+    name: str
+    voice: str
+
+
+@dataclass(frozen=True)
+class AlertSettings:
+    permission: bool = True
+    idle: bool = True
+    questions: bool = True
+
+
+ALERT_TYPES = ("permission", "idle", "questions")
+
+
+@dataclass(frozen=True)
 class Config:
     summary: SummarySettings
     voice: VoiceSettings
+    projects: dict = field(default_factory=dict)
+    alerts: AlertSettings = AlertSettings()
 
 
 def home() -> Path:
@@ -81,12 +99,44 @@ def _voice(raw, problems: list[str]) -> VoiceSettings:
                          _str(raw, "model") or ELEVEN_MODEL_DEFAULT)
 
 
+def _projects(raw, problems: list[str]) -> dict:
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        problems.append(f"projects: expected an object, got {type(raw).__name__}; ignoring it")
+        return {}
+    out = {}
+    for folder, sec in raw.items():
+        if isinstance(sec, dict):
+            out[str(folder)] = ProjectSettings(_str(sec, "name"), _str(sec, "voice"))
+        else:
+            problems.append(f"projects.{folder}: expected an object; ignoring it")
+    return out
+
+
+def _alerts(raw, problems: list[str]) -> AlertSettings:
+    if raw is None:
+        return AlertSettings()
+    if not isinstance(raw, dict):
+        problems.append(f"alerts: expected an object, got {type(raw).__name__}; all alerts on")
+        return AlertSettings()
+    vals = {}
+    for name in ALERT_TYPES:
+        v = raw.get(name, True)
+        if not isinstance(v, bool):
+            problems.append(f"alerts.{name}: expected true or false, got {v!r}; using true")
+            v = True
+        vals[name] = v
+    return AlertSettings(**vals)
+
+
 def validate(raw) -> tuple[Config, list[str]]:
     problems: list[str] = []
     if not isinstance(raw, dict):
         problems.append("config: expected a JSON object; using defaults")
         raw = {}
-    cfg = Config(_summary(raw.get("summary"), problems), _voice(raw.get("voice"), problems))
+    cfg = Config(_summary(raw.get("summary"), problems), _voice(raw.get("voice"), problems),
+                 _projects(raw.get("projects"), problems), _alerts(raw.get("alerts"), problems))
     for p in problems:
         log_error(p)
     return cfg, problems

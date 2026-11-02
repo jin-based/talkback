@@ -13,19 +13,34 @@ FIELDS = {"summary": ("provider", "model", "url"), "voice": ("provider", "voice"
 PROVIDERS = {"summary": config.SUMMARY_PROVIDERS, "voice": config.VOICE_PROVIDERS}
 
 
-def _parse(arg: str) -> tuple[str, str, str]:
+PROJECT_FIELDS = ("name", "voice")
+ON_OFF = {"on": True, "off": False, "true": True, "false": False}
+
+
+def _parse(arg: str):
     if "=" not in arg or "." not in arg.split("=", 1)[0]:
         raise ValueError(f"Unknown setting {arg!r}: use section.field=value, e.g. voice.provider=kokoro")
     name, value = arg.split("=", 1)
     section, field = name.split(".", 1)
+    value = value.strip()
+    if section == "projects":
+        folder, _, pfield = field.rpartition(".")
+        if not folder or pfield not in PROJECT_FIELDS:
+            raise ValueError(f"Unknown setting {name!r}: use projects.<folder>.name or projects.<folder>.voice")
+        return ("projects", folder, pfield), value
+    if section == "alerts":
+        if field not in config.ALERT_TYPES:
+            raise ValueError(f"Unknown alert {field!r}: choose {', '.join(config.ALERT_TYPES)}")
+        if value and value.lower() not in ON_OFF:
+            raise ValueError(f"Unknown value {value!r} for {name}: use on or off")
+        return ("alerts", field), (ON_OFF[value.lower()] if value else "")
     if section not in FIELDS:
-        raise ValueError(f"Unknown section {section!r}: choose summary or voice")
+        raise ValueError(f"Unknown section {section!r}: choose summary, voice, projects or alerts")
     if field not in FIELDS[section]:
         raise ValueError(f"Unknown field {name!r}: {section} has {', '.join(FIELDS[section])}")
-    value = value.strip()
     if field == "provider" and value and value not in PROVIDERS[section]:
         raise ValueError(f"Unknown {section} provider {value!r}: choose {', '.join(PROVIDERS[section])}")
-    return section, field, value
+    return (section, field), value
 
 
 def main(argv: list[str]) -> int:
@@ -40,15 +55,18 @@ def main(argv: list[str]) -> int:
     raw = config.read_raw()
     if not isinstance(raw, dict):
         raw = {}
-    for section, field, value in changes:
-        sec = raw.get(section) if isinstance(raw.get(section), dict) else {}
-        if value:
-            sec[field] = value
+    for path, value in changes:
+        node = raw
+        for key in path[:-1]:
+            node[key] = node.get(key) if isinstance(node.get(key), dict) else {}
+            node = node[key]
+        if value == "":
+            node.pop(path[-1], None)
         else:
-            sec.pop(field, None)
-        raw[section] = sec
+            node[path[-1]] = value
     (config.home() / "config.json").write_text(json.dumps(raw, indent=2) + "\n")
-    print("Saved: " + ", ".join(f"{s}.{f}={v}" for s, f, v in changes))
+    shown = lambda v: ("on" if v else "off") if isinstance(v, bool) else v
+    print("Saved: " + ", ".join(".".join(p) + "=" + str(shown(v)) for p, v in changes))
     return 0
 
 

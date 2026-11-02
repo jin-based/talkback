@@ -109,3 +109,19 @@ def test_status_prints_scripts_folder(capsys):
     status.main()
     first = capsys.readouterr().out.splitlines()[0]
     assert first == f"Scripts: {Path(status.__file__).resolve().parent}"
+
+
+def test_configure_projects_and_alerts(tmp_path):
+    assert configure.main(["alerts.idle=off", "projects.horizon.voice=af_bella", "projects.horizon.name=Horizon"]) == 0
+    data = json.loads((tmp_path / "config.json").read_text())
+    assert data == {"alerts": {"idle": False}, "projects": {"horizon": {"voice": "af_bella", "name": "Horizon"}}}
+    configure.main(["alerts.idle=on", "projects.horizon.name="])
+    data = json.loads((tmp_path / "config.json").read_text())
+    assert data["alerts"]["idle"] is True and data["projects"]["horizon"] == {"voice": "af_bella"}
+
+
+def test_configure_rejects_bad_alert_value(tmp_path):
+    assert configure.main(["alerts.idle=maybe"]) == 1
+    assert configure.main(["alerts.loud=on"]) == 1
+    assert configure.main(["projects.horizon.color=red"]) == 1
+    assert not (tmp_path / "config.json").exists()
