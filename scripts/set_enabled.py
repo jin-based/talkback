@@ -5,7 +5,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from talkback import config, playback  # noqa: E402
+from talkback import config, queue  # noqa: E402
 
 
 def main(argv: list[str]) -> int:
@@ -15,7 +15,7 @@ def main(argv: list[str]) -> int:
         return 1
     config.set_enabled(arg == "on")
     if arg == "off":
-        playback.claim_and_stop()
+        queue.stop_all()
     print(f"Talk-back is {arg}.")
     return 0
 

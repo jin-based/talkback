@@ -8,22 +8,20 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from talkback import config, summarizers, voices  # noqa: E402
+from talkback import config, queue, sessions, summarizers, voices  # noqa: E402
 from talkback.clean import clean  # noqa: E402
-from talkback.playback import claim_and_stop, play_file  # noqa: E402
 
+TEST_SESSION = "talkback-test"
 SAMPLE = ("I found the bug: the session timer compared seconds to milliseconds, so every login expired at once. "
           "I fixed the comparison, added a regression test, and the whole test suite passes now.")
 
 
 def _speak(cfg: config.Config) -> tuple[str, str]:
     summary, fell_back = summarizers.run_detailed(clean(SAMPLE), cfg.summary)
-    token = claim_and_stop()
+    token = sessions.claim(TEST_SESSION)
     path, voice_used = voices.render(summary, cfg.voice, token)
-    try:
-        play_file(path, token)
-    finally:
-        path.unlink(missing_ok=True)
+    queue.enqueue(TEST_SESSION, token, path, "summary", front=True)
+    queue.run_player()
     s_label = f"first sentence (fallback from {cfg.summary.provider})" if fell_back else cfg.summary.provider
     if cfg.summary.provider == "none":
         s_label = "first sentence (none)"

@@ -5,13 +5,17 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from talkback import playback  # noqa: E402
+import json  # noqa: E402
+
+from talkback import queue  # noqa: E402
 from talkback.log import log_error  # noqa: E402
 
 
 def main(stdin_text: str) -> int:
     try:
-        playback.claim_and_stop()  # any speaker still summarizing is now stale
+        data = json.loads(stdin_text) if stdin_text.strip() else {}
+        session = str(data.get("session_id") or "default") if isinstance(data, dict) else "default"
+        queue.stop_session(session)  # only this session's speech stops
     except Exception as e:
         log_error(f"hook_prompt_submit: {e!r}")
     return 0

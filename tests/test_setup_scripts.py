@@ -76,7 +76,8 @@ def test_test_voice_reports_fallback(monkeypatch, capsys, tmp_path):
 
     monkeypatch.setattr(voices.say, "synthesize", fake_say)
     played = []
-    monkeypatch.setattr(tv, "play_file", lambda path, token: played.append(path))
+    monkeypatch.setattr(tv.queue, "enqueue", lambda session, token, audio, kind, front: played.append(audio))
+    monkeypatch.setattr(tv.queue, "run_player", lambda: [p.unlink() for p in played])
     assert tv.main([]) == 0
     out = capsys.readouterr().out
     assert "Summary by: first sentence (fallback from anthropic)" in out

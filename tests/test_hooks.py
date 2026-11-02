@@ -7,7 +7,7 @@ from talkback import config
 
 def _record_speak(monkeypatch):
     said = []
-    monkeypatch.setattr(hook_stop.speaker, "speak", said.append)
+    monkeypatch.setattr(hook_stop.speaker, "speak", lambda reply, hook: said.append(reply))
     return said
 
 
@@ -37,12 +37,12 @@ def test_stop_hook_bad_input_exits_quietly(monkeypatch, capsys):
     assert said == [] and capsys.readouterr().out == ""
 
 
-def test_prompt_submit_stops_playback(monkeypatch, capsys):
+def test_prompt_submit_stops_only_its_session(monkeypatch, capsys):
     stopped = []
-    monkeypatch.setattr(hook_prompt_submit.playback, "stop_current", lambda: stopped.append(1))
-    assert hook_prompt_submit.main('{"prompt": "hi"}') == 0
-    assert stopped == [1] and capsys.readouterr().out == ""
-
+    monkeypatch.setattr(hook_prompt_submit.queue, "stop_session", stopped.append)
+    assert hook_prompt_submit.main('{"prompt": "hi", "session_id": "S1"}') == 0
+    assert hook_prompt_submit.main("{nope") == 0
+    assert stopped == ["S1"] and capsys.readouterr().out == ""
 
 def test_session_start_warms_model(monkeypatch):
     warmed = []
@@ -71,20 +71,17 @@ def test_set_enabled_bad_arg(capsys):
     assert "on or off" in capsys.readouterr().out
 
 
-def test_prompt_submit_makes_in_flight_speaker_stale(monkeypatch):
-    monkeypatch.setattr(hook_prompt_submit.playback, "stop_current", lambda: None)
-    from talkback import playback
-    token = playback.claim()  # a speaker still summarizing
-    hook_prompt_submit.main("{}")
-    assert not playback.is_current(token)
+def test_stop_hook_passes_hook_input(monkeypatch):
+    got = []
+    monkeypatch.setattr(hook_stop.speaker, "speak", lambda reply, hook: got.append((reply, hook["session_id"])))
+    hook_stop.main('{"last_assistant_message": "Done.", "session_id": "S9"}')
+    assert got == [("Done.", "S9")]
 
-
-def test_set_enabled_off_stops_talking(monkeypatch):
+def test_off_stops_all(monkeypatch):
     stopped = []
-    monkeypatch.setattr(set_enabled.playback, "stop_current", lambda: stopped.append(1))
+    monkeypatch.setattr(set_enabled.queue, "stop_all", lambda: stopped.append(1))
     set_enabled.main(["off"])
     assert stopped == [1]
-
 
 def test_stop_hook_logs_missing_message(tmp_path):
     hook_stop.main('{"other": 1}')
