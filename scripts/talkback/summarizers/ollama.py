@@ -4,13 +4,13 @@ from __future__ import annotations
 from talkback.config import SummarySettings
 from talkback.log import log_error
 from talkback.summarizers import _http
-from talkback.summarizers.prompt import messages
+from talkback.summarizers.prompt import SYSTEM_PROMPT, messages
 
 TIMEOUT = 5
 
 
-def summarize(text: str, s: SummarySettings, key: str | None) -> str:
-    body = {"model": s.model, "stream": False, "think": False, "keep_alive": "30m", "messages": messages(text)}
+def summarize(text: str, s: SummarySettings, key: str | None, system: str = SYSTEM_PROMPT) -> str:
+    body = {"model": s.model, "stream": False, "think": False, "keep_alive": "30m", "messages": messages(text, system)}
     return _http.post_json(f"{s.url}/api/chat", {}, body, TIMEOUT)["message"]["content"]
 
 

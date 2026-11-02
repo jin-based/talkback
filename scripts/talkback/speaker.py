@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from talkback import queue, sessions, summarizers, voices
+from talkback import question, queue, sessions, summarizers, voices
 from talkback.clean import clean
 from talkback.config import Config, VoiceSettings, load_config
 from talkback.log import log_error
@@ -20,7 +20,8 @@ def voice_for(cfg: Config, folder: str) -> VoiceSettings:
 
 
 def question_part(reply: str, cfg: Config) -> str:
-    return ""
+    q = question.extract(reply)
+    return " " + question.spoken(q[0], q[1], cfg.summary) if q else ""
 
 
 def speak(reply: str, hook: dict) -> None:

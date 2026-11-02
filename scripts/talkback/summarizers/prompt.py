@@ -10,5 +10,5 @@ def tail(text: str) -> str:
     return text[-MAX_CHARS:]
 
 
-def messages(text: str) -> list[dict]:
-    return [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": tail(text)}]
+def messages(text: str, system: str = SYSTEM_PROMPT) -> list[dict]:
+    return [{"role": "system", "content": system}, {"role": "user", "content": tail(text)}]

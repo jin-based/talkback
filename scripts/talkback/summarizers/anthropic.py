@@ -9,12 +9,12 @@ URL = "https://api.anthropic.com/v1/messages"
 TIMEOUT = 8
 
 
-def summarize(text: str, s: SummarySettings, key: str | None) -> str:
+def summarize(text: str, s: SummarySettings, key: str | None, system: str = SYSTEM_PROMPT) -> str:
     if not key:
         raise RuntimeError("no key (run /talkback:key anthropic)")
     headers = {"x-api-key": key, "anthropic-version": "2026-10-21"}
     body = {
-        "model": s.model, "max_tokens": 300, "system": SYSTEM_PROMPT,
+        "model": s.model, "max_tokens": 300, "system": system,
         "messages": [{"role": "user", "content": tail(text)}],
         "output_config": {"effort": "low"},
     }

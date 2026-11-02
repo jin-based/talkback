@@ -20,16 +20,17 @@ def _key_for(s: SummarySettings) -> str | None:
     return get_key(s.provider) if s.provider in KEYED else None
 
 
-def run(text: str, s: SummarySettings) -> str:
+def run(text: str, s: SummarySettings, system: str | None = None) -> str:
     """`text` is already cleaned and non-empty."""
-    return run_detailed(text, s)[0]
+    return run_detailed(text, s, system)[0]
 
 
-def run_detailed(text: str, s: SummarySettings) -> tuple[str, bool]:
-    """Returns (summary, used_fallback)."""
+def run_detailed(text: str, s: SummarySettings, system: str | None = None) -> tuple[str, bool]:
+    """Returns (summary, used_fallback). `system` replaces the default summary prompt."""
     try:
         key = _key_for(s)
-        out = first_sentence(clean(PROVIDERS[s.provider].summarize(text, s, key)), max_words=30)
+        out = first_sentence(clean(PROVIDERS[s.provider].summarize(text, s, key, system or SYSTEM_PROMPT)),
+                             max_words=30)
         if out:
             return out, False
         raise RuntimeError("empty summary")
